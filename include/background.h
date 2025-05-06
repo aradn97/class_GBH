@@ -85,6 +85,8 @@ struct background
   int N_ncdm;                            /**< Number of distinguishable ncdm species */
   /* the following parameters help to define tabulated ncdm p-s-d passed in file */
   char * ncdm_psd_files;                 /**< list of filenames for tabulated p-s-d */
+  char * gbh_table_address;              //GBH_bg : address of the w_n table file
+  char * gbh_table_rho_address;              //GBH_bg : address of the rho_gbh table file
   int * got_files;                       /**< list of flags for each species, set to true if p-s-d is passed through file */
   /* the following parameters help to define the analytical ncdm phase space distributions (p-s-d) */
   double * ncdm_psd_parameters;          /**< list of parameters for specifying/modifying ncdm p.s.d.'s, to be customized for given model
@@ -92,6 +94,7 @@ struct background
   double * M_ncdm;                       /**< vector of masses of non-cold relic: dimensionless ratios m_ncdm/T_ncdm */
   double * m_ncdm_in_eV;                 /**< list of ncdm masses in eV (inferred from M_ncdm and other parameters above) */
   double * Omega0_ncdm, Omega0_ncdm_tot; /**< Omega0_ncdm for each species and for the total Omega0_ncdm */
+  double Omega0_gbh;                     /**< Omega0 for the species that is being solved by GBH*/ //GBH_bg
   double * T_ncdm,T_ncdm_default;        /**< list of 1st parameters in p-s-d of non-cold relics: relative temperature
                                             T_ncdm1/T_gamma; and its default value */
   double * ksi_ncdm, ksi_ncdm_default;   /**< list of 2nd parameters in p-s-d of non-cold relics: relative chemical potential
@@ -101,6 +104,14 @@ struct background
                                              default value */
   int * ncdm_input_q_size; /**< Vector of numbers of q bins */
   double * ncdm_qmax;      /**< Vector of maximum value of q */
+
+  /*GBH_bg_start*/
+  int last_index_gbh;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
+  int gbh_use_table;        /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 1*/
+  int n_max_gbh;            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0. This is given by user */ 
+  double M_gbh;             /**< mass of gbh species in eV */
+  double N_gbh;             /**< number of gbh species */
+  /*GBH_bg_end*/
 
   double Omega0_k;         /**< \f$ \Omega_{0_k} \f$: curvature contribution */
 
@@ -136,6 +147,7 @@ struct background
 
   double age; /**< age in Gyears */
   double conformal_age; /**< conformal age in Mpc */
+  double gbh_horizon; /**< conformal free streaming length of GBH species in Mpc */
   double K; /**< \f$ K \f$: Curvature parameter \f$ K=-\Omega0_k*a_{today}^2*H_0^2\f$; */
   int sgnK; /**< K/|K|: -1, 0 or 1 */
   double Neff; /**< so-called "effective neutrino number", computed at earliest time in interpolation table */
@@ -189,6 +201,9 @@ struct background
   int index_bg_rho_ncdm1;     /**< density of first ncdm species (others contiguous) */
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
   int index_bg_pseudo_p_ncdm1;/**< another statistical momentum useful in ncdma approximation */
+
+  int index_bg_P_gbh;         /**< density of species in GBH*/   //GBH_bg
+  int index_bg_fs_gbh;        /**< free streaming distance of species in GBH*/   //GBH_pt
 
   int index_bg_rho_tot;       /**< Total density */
   int index_bg_p_tot;         /**< Total pressure */
@@ -262,9 +277,12 @@ struct background
   int index_bi_phi_scf;       /**< {B} scalar field value */
   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
 
+  //int index_bi_P0_gbh;  /**< {B} gbh density */  //GBH_bg
+
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
+  int index_bi_fs_gbh;  /**< {C} free streaming distance in Mpc for gbh */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
   int index_bi_D_prime; /**< {C} D satisfies \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$ */
 
@@ -289,6 +307,8 @@ struct background
   short has_dr;        /**< presence of relativistic decay radiation? */
   short has_scf;       /**< presence of a scalar field? */
   short has_ncdm;      /**< presence of non-cold dark matter? */
+  short has_gbh;       /**< presence of gbh at background? */  //GBH_bg
+  short has_gbh_pt;    /**< presence of gbh at perturbations? */  //GBH_pt
   short has_lambda;    /**< presence of cosmological constant? */
   short has_fld;       /**< presence of fluid with constant w and cs2? */
   short has_ur;        /**< presence of ultra-relativistic neutrinos/relics? */
@@ -316,6 +336,28 @@ struct background
   double * factor_ncdm; /**< List of normalization factors for calculating energy density etc.*/
 
   //@}
+
+  /*GBH_bg_start*/
+  /**
+   *@name - arrays related to saving gbh w's
+   */
+
+  //@{
+
+
+  double * x_gbh_bg;   /**< Pointers to vectors of background sampling in x=ma/T0 */
+  double * w_gbh_bg;   /**< Pointers to vectors of sampled w_n's */
+  double * d2w_gbh_bg; /**< Pointers to vectors of d^2w_n/dx^2 at sampled points, calculated in gbh_init */
+  double * rho_gbh_bg;   /**< Pointers to vectors of sampled rho_gbh */
+  double * d2rho_gbh_bg; /**< Pointers to vectors of d^2rho_n/dx^2 at sampled points, calculated in gbh_init */
+  int x_size_gbh_bg;     /**< Size of the x arrays */
+  int n_max_gbh_table;
+
+  //@}
+  /*GBH_bg_end*/
+
+
+
 
   /** @name - technical parameters */
 
@@ -368,6 +410,10 @@ struct background_parameters_for_distributions {
   int last_index;
 
 };
+
+
+
+
 
 /**************************************************************/
 /* @cond INCLUDE_WITH_DOXYGEN */
@@ -467,6 +513,12 @@ extern "C" {
                            struct precision *ppr,
                            struct background *pba
                            );
+  /*GBH_bg_start*/
+  int background_gbh_init(
+                           struct precision *ppr,
+                           struct background *pba
+                           );
+  /*GBH_bg_end*/                           
 
   int background_ncdm_momenta(
                               double * qvec,

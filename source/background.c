@@ -394,6 +394,8 @@ int background_functions(
   double rho_ncdm,p_ncdm,pseudo_p_ncdm;
   /* index for n_ncdm species */
   int n_ncdm;
+  /* index for gbh hierarchy */
+  int n_gbh; //GBH_bg
   /* fluid's time-dependent equation of state parameter */
   double w_fld, dw_over_da, integral_fld;
   /* scalar field quantities */
@@ -404,6 +406,11 @@ int background_functions(
      p_prime = a_prime_over_a * dp_dloga = a_prime_over_a * Sum [ (w_prime/a_prime_over_a -3(1+w)w)rho].
      Note: The scalar field contribution must be added in the end, as an exception!*/
   double dp_dloga;
+  /*GBH_bg_start*/
+  double current_x_value; 
+  double interpolated_integral,interpolated_rho; // interpolated values of rho
+  double *interpolated_w_n; // Pointer to store interpolated values of w_n
+  /*GBH_bg_end*/
 
   /** - initialize local variables */
   rho_tot = 0.;
@@ -513,6 +520,9 @@ int background_functions(
                  pba->error_message);
 
       pvecback[pba->index_bg_rho_ncdm1+n_ncdm] = rho_ncdm;
+      if(1./a-1.>=9.9e13)
+      printf("\na= %e,rho_ncdm= %e\n",a,rho_ncdm);
+
       rho_tot += rho_ncdm;
       pvecback[pba->index_bg_p_ncdm1+n_ncdm] = p_ncdm;
       p_tot += p_ncdm;
@@ -528,6 +538,85 @@ int background_functions(
       rho_m += rho_ncdm - 3.* p_ncdm;
     }
   }
+
+
+  /*GBH_bg_start*/
+  if(pba->has_gbh == _TRUE_){
+    current_x_value = pba->M_gbh * a;
+    // Interpolate `rho` for GBH from the saved array of pre-computed values
+    if(current_x_value<=100.)
+    {
+      class_call(array_interpolate_spline(
+                                          pba->x_gbh_bg,
+                                          pba->x_size_gbh_bg,
+                                          pba->rho_gbh_bg,
+                                          pba->d2rho_gbh_bg,
+                                          1, //number of columns in rho_gbh_bg
+                                          current_x_value,  // Replace with the appropriate value, e.g., 1/a-1
+                                          &pba->last_index_gbh,
+                                          &interpolated_integral,
+                                          1, //we want interpolation for 1 column only
+                                          pba->error_message),
+                pba->error_message, pba->error_message);
+    }
+    else
+    {
+      interpolated_integral = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * current_x_value / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
+    }
+    //if(a>=1.)//test
+    //  printf("\nInterpolated rho= %e, a= %e, x= %e, pba->rho_gbh_bg[pba->x_size_gbh_bg-1]= %e, pba->x_gbh_bg[pba->x_size_gbh_bg-1]=%e\n",interpolated_rho,a,current_x_value, pba->rho_gbh_bg[pba->x_size_gbh_bg-1],pba->x_gbh_bg[pba->x_size_gbh_bg-1]);
+    interpolated_rho = interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho.
+    pvecback[pba->index_bg_P_gbh] = interpolated_rho / 3.;
+    //pvecback[pba->index_bg_P_gbh] = pvecback_B[pba->index_bi_P0_gbh];
+    class_alloc(interpolated_w_n, sizeof(double) * (pba->n_max_gbh+1), pba->error_message);
+    // Interpolate `w_n` for GBH from the saved array of pre-computed values
+    if(current_x_value<=100.)
+    {
+    class_call(array_interpolate_spline(
+                                        pba->x_gbh_bg,
+                                        pba->x_size_gbh_bg,
+                                        pba->w_gbh_bg,
+                                        pba->d2w_gbh_bg,
+                                        pba->n_max_gbh_table, //number of columns in w_gbh_bg
+                                        current_x_value,  // Replace with the appropriate value, e.g., 1/a-1
+                                        &pba->last_index_gbh,
+                                        interpolated_w_n,
+                                        pba->n_max_gbh+1, //the first column is w_0=1/3, so we'll ignore that.
+                                        pba->error_message),
+              pba->error_message, pba->error_message);
+    }
+    else{
+          for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) 
+          {
+            interpolated_w_n[n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(100./current_x_value,2*n_gbh);
+          }
+    }
+    for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) //interact with the pre-computed table of w_n's here
+    {
+      pvecback[pba->index_bg_P_gbh + n_gbh] = 3.*pvecback[pba->index_bg_P_gbh] * interpolated_w_n[n_gbh];
+    }
+    rho_tot += 3.*pvecback[pba->index_bg_P_gbh];
+    p_tot +=  pvecback[pba->index_bg_P_gbh+1];
+    
+    /* (3 p) is the "relativistic" contribution to energy density */
+    rho_r += 3.* pvecback[pba->index_bg_P_gbh+1];
+
+      /* (rho_gbh - 3 p_gbh) is the "non-relativistic" contribution
+         to energy density */
+    rho_m += 3.*pvecback[pba->index_bg_P_gbh] - 3.* pvecback[pba->index_bg_P_gbh+1];
+
+    // Free the dynamically allocated memory for interpolated_w_n
+    free(interpolated_w_n);
+
+    if(1./a-1.>=9.9e13)
+    printf("\na= %e,rho_gbh= %e, Omega0_gbh= %e, H02oa4= %e\n",a,interpolated_rho,interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(4./11.,4./3.)*pba->Omega0_g,pow(pba->H0,2)/pow(a,4));
+  }
+  /*GBH_bg_end*/
+  /*GBH_pt_start*/
+  if(pba->has_gbh == _TRUE_){
+    pvecback[pba->index_bg_fs_gbh] = pvecback_B[pba->index_bi_fs_gbh];
+  }
+  /*GBH_pt_end*/
 
   /* Lambda */
   if (pba->has_lambda == _TRUE_) {
@@ -562,6 +651,8 @@ int background_functions(
     p_tot += (1./3.) * pvecback[pba->index_bg_rho_ur];
     dp_dloga += -(4./3.) * pvecback[pba->index_bg_rho_ur];
     rho_r += pvecback[pba->index_bg_rho_ur];
+    if(1./a-1.>=9.9e13)
+    printf("\na=%e, rho_ur= %e, pba->Omega0_ur= %e %e, H02oa4= %e\n",a,pvecback[pba->index_bg_rho_ur]/1.0176,pba->Omega0_ur/1.0176,7./8.*pow(4./11.,4./3.)*pba->Omega0_g,pow(pba->H0,2) / pow(a,4));
   }
 
   /* interacting dark radiation */
@@ -845,7 +936,7 @@ int background_init(
   class_call(background_output_budget(pba),
              pba->error_message,
              pba->error_message);
-
+  
   return _SUCCESS_;
 
 }
@@ -941,6 +1032,16 @@ int background_free_input(
     if (pba->ncdm_psd_parameters!=NULL)
       free(pba->ncdm_psd_parameters);
   }
+  /*GBH_bg_start*/
+  if(pba->has_gbh == _TRUE_){
+  free(pba->x_gbh_bg);
+  free(pba->w_gbh_bg);
+  free(pba->d2w_gbh_bg);
+
+  free(pba->rho_gbh_bg);
+  free(pba->d2rho_gbh_bg);
+  } 
+  /*GBH_bg_end*/
 
   if (pba->Omega0_scf != 0.) {
     if (pba->scf_parameters != NULL)
@@ -974,6 +1075,7 @@ int background_indices(
   pba->has_cdm = _FALSE_;
   pba->has_idm = _FALSE_;
   pba->has_ncdm = _FALSE_;
+  pba->has_gbh = _FALSE_;  //GBH_bg
   pba->has_dcdm = _FALSE_;
   pba->has_dr = _FALSE_;
   pba->has_scf = _FALSE_;
@@ -992,6 +1094,11 @@ int background_indices(
 
   if (pba->Omega0_ncdm_tot != 0.)
     pba->has_ncdm = _TRUE_;
+
+  /*GBH_bg_start*/
+  if (pba->Omega0_gbh != 0.)
+    pba->has_gbh = _TRUE_;
+  /*GBH_bg_end*/
 
   if (pba->Omega0_dcdmdr != 0.) {
     pba->has_dcdm = _TRUE_;
@@ -1052,6 +1159,12 @@ int background_indices(
   class_define_index(pba->index_bg_rho_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_pseudo_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
+  /* - index for n GBH moments*/
+  class_define_index(pba->index_bg_P_gbh,pba->has_gbh,index_bg,pba->n_max_gbh+1); //GBH_bg
+
+  /* -> free streaming distance of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bg_fs_gbh,pba->has_gbh,index_bg,1); //GBH_pt
+  
 
   /* - index for dcdm */
   class_define_index(pba->index_bg_rho_dcdm,pba->has_dcdm,index_bg,1);
@@ -1151,6 +1264,10 @@ int background_indices(
 
   /* -> index for conformal time in vector of variables to integrate */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
+  /* -> energy density in gbh zeroth moment (energy density/3) */ 
+  //class_define_index(pba->index_bi_P0_gbh,pba->has_gbh,index_bi,1); //GBH_bg
+  /* -> free streaming distance of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bi_fs_gbh,pba->has_gbh,index_bi,1); //GBH_pt
 
   /* -> energy density in DCDM */
   class_define_index(pba->index_bi_rho_dcdm,pba->has_dcdm,index_bi,1);
@@ -1179,6 +1296,7 @@ int background_indices(
   /* -> Second order equation for growth factor */
   class_define_index(pba->index_bi_D,_TRUE_,index_bi,1);
   class_define_index(pba->index_bi_D_prime,_TRUE_,index_bi,1);
+
 
 
   /* -> end of indices in the vector of variables to integrate */
@@ -1517,7 +1635,6 @@ int background_ncdm_init(
                 pba->q_size_ncdm[k]*sizeof(double),
                 pba->error_message);
 
-
     for (index_q=0; index_q<pba->q_size_ncdm[k]; index_q++) {
       q = pba->q_ncdm[k][index_q];
       class_call(background_ncdm_distribution(&pbadist,q,&f0),
@@ -1572,6 +1689,136 @@ int background_ncdm_init(
 
   return _SUCCESS_;
 }
+
+
+
+
+/*GBH_bg_start*/
+/**
+ * This function reads the pre-computed table of w_n's
+ * 
+ *
+ * @param ppr Input: precision structure
+ * @param pba Input/Output: background structure
+ */
+
+int background_gbh_init(
+                         struct precision *ppr,
+                         struct background *pba
+                         ) {
+
+
+
+
+  FILE *w_table;
+  char buffer[1024]; // Buffer for reading lines
+  int row, status;
+  double tmp1; //for the first read
+
+  pba->last_index_gbh = 0; //this will be used by spline function to perform faster binary searches when interpolating, using the previous interpolated index
+
+  /*Do we need to read in a file to interpolate the distribution function? */
+  if (pba->gbh_use_table==1) {
+    w_table = fopen(pba->gbh_table_address,"r");
+    class_test(w_table == NULL,pba->error_message,
+                "Could not open file %s!",pba->gbh_table_address);
+
+    // Skip the header line
+    fgets(buffer, sizeof(buffer), w_table);
+    
+    // Find size of table:
+    for (row=0,status=1; status==1; row++) {
+      status = fscanf(w_table, "%lf", &tmp1); // Read the first value in the row. this is x
+      for (int col = 0; col < pba->n_max_gbh_table; col++) {
+            status = fscanf(w_table, "%lf", &tmp1); // Read the rest of the values in the row
+      }
+    }
+    rewind(w_table); // Set file pointer to the beginning of the file
+    pba->x_size_gbh_bg = row - 1 + 1; //-1 since the last iteration increases row by 1 and then exits-- +1 because we'll add x=0 by hand
+    printf("\npba->x_size_gbh_bg: %d\n",pba->x_size_gbh_bg);
+    printf("\npba->n_max_gbh_table: %d\n",pba->n_max_gbh_table);
+    // Skip the header line again after rewinding
+    fgets(buffer, sizeof(buffer), w_table);
+    printf("\ncheck-1\n");
+    /*Allocate room for interpolation table: */
+    class_alloc(pba->x_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
+    class_alloc(pba->w_gbh_bg,sizeof(double)*pba->n_max_gbh_table*pba->x_size_gbh_bg,pba->error_message);
+    class_alloc(pba->d2w_gbh_bg,sizeof(double)*pba->n_max_gbh_table*pba->x_size_gbh_bg,pba->error_message);
+    printf("\ncheck0\n");
+    //the case of x=0:
+    pba->x_gbh_bg[0] = 0.0;
+    for (int col = 0; col < pba->n_max_gbh_table; col++) 
+      pba->w_gbh_bg[col] = 1./3.; 
+    printf("\ncheck1\n");
+    for (row=1; row<pba->x_size_gbh_bg; row++) { // start from row=+1 because w[row=0] corresponds to x=0 which is not in the table
+      status = fscanf(w_table, "%lf", &pba->x_gbh_bg[row]); // Read the x value
+      for (int col = 0; col < pba->n_max_gbh_table; col++) {
+            status = fscanf(w_table, "%lf", &pba->w_gbh_bg[ row * pba->n_max_gbh_table + col]); // Read w_n values
+        }
+    }
+    fclose(w_table);
+    /* Call spline interpolation: */
+    class_call(array_spline_table_lines(pba->x_gbh_bg,
+                                        pba->x_size_gbh_bg,
+                                        pba->w_gbh_bg,
+                                        pba->n_max_gbh_table,
+                                        pba->d2w_gbh_bg,
+                                        _SPLINE_EST_DERIV_,
+                                        pba->error_message),
+                pba->error_message,
+                pba->error_message);
+
+    //Now read the table for energy density
+
+    w_table = fopen(pba->gbh_table_rho_address,"r");
+    class_test(w_table == NULL,pba->error_message,
+                "Could not open file %s!",pba->gbh_table_rho_address);
+
+    // Skip the header line
+    fgets(buffer, sizeof(buffer), w_table);
+    
+    // Skip finding the size of the table because we already know it.
+
+    // Skip the header line again after rewinding
+    fgets(buffer, sizeof(buffer), w_table);
+
+    /*Allocate room for interpolation table: */
+    //class_alloc(pba->x_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
+    class_alloc(pba->rho_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
+    class_alloc(pba->d2rho_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
+    //the case of x=0:
+    pba->rho_gbh_bg[0] = 7./8.*pow(_PI_,2)/15.;
+    printf("\ncheck2\n");
+    for (row=1; row<pba->x_size_gbh_bg; row++) {//start from row=+1 because rho[row=0] corresponds to x=0 which is not in the table
+      status = fscanf(w_table, "%lf", &tmp1); // Read the x value
+      status = fscanf(w_table, "%lf", &pba->rho_gbh_bg[row]); // Read rho values; +1 because rho[0] corresponds to x=0 which is not in the table
+    }
+    fclose(w_table);
+    /* Call spline interpolation: */
+    class_call(array_spline_table_lines(pba->x_gbh_bg,
+                                        pba->x_size_gbh_bg,
+                                        pba->rho_gbh_bg,
+                                        1,
+                                        pba->d2rho_gbh_bg,
+                                        _SPLINE_EST_DERIV_,
+                                        pba->error_message),
+                pba->error_message,
+                pba->error_message);
+  
+  
+  }
+  printf("\ncheck3\n");
+  return _SUCCESS_;
+}
+/*GBH_bg_end*/
+
+
+
+
+
+
+
+
 
 /**
  * For a given ncdm species: given the quadrature weights, the mass
@@ -1980,6 +2227,10 @@ int background_solve(
   pba->age = pvecback_integration[pba->index_bi_time]/_Gyr_over_Mpc_;
   /* -> conformal age in Mpc */
   pba->conformal_age = pvecback_integration[pba->index_bi_tau];
+  /* -> conformal free streaming length of GBH species */
+  if (pba->has_gbh == _TRUE_) {
+    pba->gbh_horizon = pvecback_integration[pba->index_bi_fs_gbh];
+  }
   /* -> contribution of decaying dark matter and dark radiation to the critical density today: */
   if (pba->has_dcdm == _TRUE_) {
     pba->Omega0_dcdm = pvecback_integration[pba->index_bi_rho_dcdm]/pba->H0/pba->H0;
@@ -2067,6 +2318,11 @@ int background_solve(
       printf("     -> Omega0_dr+Omega0_dcdm = %f, input value = %f\n",
              pba->Omega0_dr+pba->Omega0_dcdm,pba->Omega0_dcdmdr);
       printf("     -> Omega_ini_dcdm/Omega_b = %f\n",pba->Omega_ini_dcdm/pba->Omega0_b);
+    }
+    if ((pba->has_gbh == _TRUE_)&&(pba->has_gbh_pt == _TRUE_)) {
+      printf("    GBH details:\n");
+      printf("     -> Omega0_gbh = %f\n",pba->Omega0_gbh);
+      printf("     -> gbh_horizon = %f\n",pba->gbh_horizon);
     }
     if (pba->has_scf == _TRUE_) {
       printf("    Scalar field details:\n");
@@ -2206,6 +2462,16 @@ int background_initial_conditions(
     /** - We must add the relativistic contribution from NCDM species */
     rho_rad += rho_ncdm_rel_tot;
   }
+  /*GBH_bg_start*/
+  if (pba->has_gbh == _TRUE_) {
+  //this is commented for now until I do another implementation that solves for rho rather than reading from the table    /** - We must add the relativistic contribution from relativistic species that are being solved by GBH*/
+     //pvecback_integration[pba->index_bi_P0_gbh] =1./3.*3.044*7./8.*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); 
+     rho_rad += 3. * 1./3.*pba->N_gbh*7./8.*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4);//pvecback_integration[pba->index_bi_P0_gbh];
+   }
+  /*GBH_bg_end*/
+  
+
+
   if (pba->has_dcdm == _TRUE_) {
     /* Remember that the critical density today in CLASS conventions is H0^2 */
     pvecback_integration[pba->index_bi_rho_dcdm] =
@@ -2314,6 +2580,12 @@ int background_initial_conditions(
       universe since Big Bang and therefore \f$ \tau=1/(aH) \f$
       (good approximation for most purposes) */
   pvecback_integration[pba->index_bi_tau] = 1./(a * pvecback[pba->index_bg_H]);
+
+  /*GBH_pt_start*/
+  if (pba->has_gbh == _TRUE_) {
+      pvecback_integration[pba->index_bi_fs_gbh] = pvecback_integration[pba->index_bi_tau]; //equal to tau initially
+  }
+  /*GBH_pt_end*/
 
   /** - compute initial sound horizon, assuming \f$ c_s=1/\sqrt{3} \f$ initially */
   pvecback_integration[pba->index_bi_rs] = pvecback_integration[pba->index_bi_tau]/sqrt(3.);
@@ -2445,6 +2717,17 @@ int background_output_titles(
       class_store_columntitle(titles,tmp,_TRUE_);
     }
   }
+  /*GBH_bg_start*/
+  if (pba->has_gbh == _TRUE_) {
+    for (n=0; n<pba->n_max_gbh+1; n++)
+    {
+      sprintf(tmp,"(.)P_gbh_[%d]",n);
+      class_store_columntitle(titles,tmp,pba->has_gbh); 
+    }
+  }
+  /*GBH_bg_end*/
+  class_store_columntitle(titles,"(.)fs_gbh",pba->has_gbh); //GBH_pt
+
   class_store_columntitle(titles,"(.)rho_lambda",pba->has_lambda);
   class_store_columntitle(titles,"(.)rho_fld",pba->has_fld);
   class_store_columntitle(titles,"(.)w_fld",pba->has_fld);
@@ -2518,6 +2801,15 @@ int background_output_data(
         class_store_double(dataptr,pvecback[pba->index_bg_p_ncdm1+n],_TRUE_,storeidx);
       }
     }
+    /*GBH_bg_start*/
+    if (pba->has_gbh == _TRUE_) { 
+      for (n=0; n<pba->n_max_gbh+1; n++)
+      {
+        class_store_double(dataptr,pvecback[pba->index_bg_P_gbh+n],pba->has_gbh,storeidx); 
+      }
+    }
+    /*GBH_bg_end*/
+    class_store_double(dataptr,pvecback[pba->index_bg_fs_gbh],pba->has_gbh,storeidx); //GBH_pt
     class_store_double(dataptr,pvecback[pba->index_bg_rho_lambda],pba->has_lambda,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_fld],pba->has_fld,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_w_fld],pba->has_fld,storeidx);
@@ -2628,6 +2920,18 @@ int background_derivs(
   if (pba->has_cdm == _TRUE_) {
     rho_M += pvecback[pba->index_bg_rho_cdm];
   }
+
+  /*GBH_bg_start*/
+  // if (pba->has_gbh == _TRUE_){
+  //   dy[pba->index_bi_P0_gbh] = -3.*y[pba->index_bi_P0_gbh] - pvecback[pba->index_bg_P_gbh+1]; //the evolution of energy density
+  // }
+  /*GBH_bg_end*/
+  /*GBH_pt_start*/
+  if (pba->has_gbh == _TRUE_){
+    dy[pba->index_bi_fs_gbh] = 1./(a*H*sqrt(1.+pba->M_gbh*a/3.));
+  }
+  /*GBH_pt_end*/
+
   if (pba->has_idm == _TRUE_){
     rho_M += pvecback[pba->index_bg_rho_idm];
   }
@@ -2817,6 +3121,13 @@ int background_output_budget(
         budget_matter+=pba->Omega0_ncdm[index_ncdm];
       }
     }
+    /*GBH_bg_start*/
+    if (pba->has_gbh > 0) {
+      printf("-> Massive neutrinos via GBH      Omega = %-15g , omega = %-15g \n",pba->Omega0_gbh,pba->Omega0_gbh*pba->h*pba->h);
+      budget_neutrino+=pba->Omega0_gbh;
+      budget_matter+=pba->Omega0_gbh;
+    }
+    /*GBH_bg_end*/
 
     printf(" ---> Relativistic Species \n");
     class_print_species("Photons",g);

@@ -313,6 +313,12 @@ class_precision_parameter(l_max_ncdm,int,17)   /**< number of momenta in Boltzma
 class_precision_parameter(l_max_g_ten,int,5)     /**< number of momenta in Boltzmann hierarchy for photon temperature (tensor), at least 4 */
 class_precision_parameter(l_max_pol_g_ten,int,5) /**< number of momenta in Boltzmann hierarchy for photon polarization (tensor), at least 4 */
 
+/*GBH_bg_start*/
+class_precision_parameter(gbh_use_table,int,1)         /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 1*/
+class_precision_parameter(n_max_gbh,int,20)            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0 */ 
+class_precision_parameter(ubound_x_gbh,double,30.)     /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
+/*GBH_bg_end*/
+
 class_precision_parameter(curvature_ini,double,1.0)     /**< initial condition for curvature for adiabatic */
 class_precision_parameter(entropy_ini,double,1.0) /**< initial condition for entropy perturbation for isocurvature */
 class_precision_parameter(gw_ini,double,1.0)      /**< initial condition for tensor metric perturbation h */
@@ -382,6 +388,7 @@ class_precision_parameter(ur_fluid_approximation,int,ufa_CLASS) /**< method for 
  */
 class_precision_parameter(ur_fluid_trigger_tau_over_tau_k,double,30.0)
 class_precision_parameter(ncdm_fluid_approximation,int,ncdmfa_CLASS) /**< method for non-cold dark matter fluid approximation */
+class_precision_parameter(gbh_fluid_approximation,int,gbh_fa_CLASS) /**< method for non-cold dark matter fluid approximation, used in gbh */ //GBH_pt
 /**
  * when to switch off ncdm (massive neutrinos / non-cold
  * relics) fluid approximation
@@ -395,7 +402,7 @@ class_precision_parameter(neglect_CMB_sources_below_visibility,double,1.0e-3)
 /**
  * The type of evolver to use: options are ndf15 or rk
  */
-class_type_parameter(evolver,int,enum evolver_type,ndf15)
+class_type_parameter(evolver,int,enum evolver_type,rk)//test ndf15)
 
 /*
  * Primordial parameters

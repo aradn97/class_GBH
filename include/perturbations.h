@@ -30,6 +30,7 @@ enum tca_idm_dr_flags {tca_idm_dr_on, tca_idm_dr_off};
 enum rsa_idr_flags {rsa_idr_off, rsa_idr_on};
 enum ufa_flags {ufa_off, ufa_on};
 enum ncdmfa_flags {ncdmfa_off, ncdmfa_on};
+enum gbh_fa_flags {gbh_fa_off, gbh_fa_on};//GBH_pt
 
 //@}
 
@@ -45,6 +46,7 @@ enum idr_method {idr_free_streaming,idr_fluid}; /* for the idm-idr case */
 enum rsa_idr_method {rsa_idr_none,rsa_idr_MD};  /* for the idm-idr case */
 enum ufa_method {ufa_mb,ufa_hu,ufa_CLASS,ufa_none};
 enum ncdmfa_method {ncdmfa_mb,ncdmfa_hu,ncdmfa_CLASS,ncdmfa_none};
+enum gbh_fa_method {gbh_fa_mb,gbh_fa_hu,gbh_fa_CLASS}; //GBH_pt
 enum tensor_methods {tm_photons_only,tm_massless_approximation,tm_exact};
 
 //@}
@@ -247,6 +249,7 @@ struct perturbations
   short has_source_delta_dr;   /**< do we need source for delta of decay radiation? */
   short has_source_delta_ur;   /**< do we need source for delta of ultra-relativistic neutrinos/relics? */
   short has_source_delta_ncdm; /**< do we need source for delta of all non-cold dark matter species (e.g. massive neutrinos)? */
+  short has_source_delta_gbh; /**< do we need source for delta of gbh species (e.g. massive neutrinos)? */ //GBH_pt
   short has_source_theta_m;    /**< do we need source for theta of total matter? */
   short has_source_theta_cb;   /**< do we ALSO need source for theta of ONLY cdm and baryon? */
   short has_source_theta_tot;  /**< do we need source for theta total? */
@@ -261,6 +264,7 @@ struct perturbations
   short has_source_theta_dr;   /**< do we need source for theta of ultra-relativistic neutrinos/relics? */
   short has_source_theta_ur;   /**< do we need source for theta of ultra-relativistic neutrinos/relics? */
   short has_source_theta_ncdm; /**< do we need source for theta of all non-cold dark matter species (e.g. massive neutrinos)? */
+  short has_source_theta_gbh;  /**< do we need source for theta of all gbh species (e.g. massive neutrinos)? */ //GBH_pt
   short has_source_phi;        /**< do we need source for metric fluctuation phi? */
   short has_source_phi_prime;  /**< do we need source for metric fluctuation phi'? */
   short has_source_phi_plus_psi; /**< do we need source for metric fluctuation (phi+psi)? */
@@ -295,6 +299,7 @@ struct perturbations
   int index_tp_delta_ur; /**< index value for delta of ultra-relativistic neutrinos/relics */
   int index_tp_delta_idr; /**< index value for delta of interacting dark radiation */
   int index_tp_delta_ncdm1; /**< index value for delta of first non-cold dark matter species (e.g. massive neutrinos) */
+  int index_tp_delta_gbh; /**< index value for delta of gbh species (e.g. massive neutrinos) */ //GBH_pt
   int index_tp_perturbed_recombination_delta_temp;		/**< Gas temperature perturbation */
   int index_tp_perturbed_recombination_delta_chi;		/**< Inionization fraction perturbation */
 
@@ -312,6 +317,7 @@ struct perturbations
   int index_tp_theta_idm;   /**< index value for theta of interacting dark matter */
   int index_tp_theta_dr;    /**< index value for F1 of decay radiation */
   int index_tp_theta_ncdm1; /**< index value for theta of first non-cold dark matter species (e.g. massive neutrinos) */
+  int index_tp_theta_gbh;   /**< index value for theta of gbh species (e.g. massive neutrinos) */ //GBH_pt
 
   int index_tp_phi;          /**< index value for metric fluctuation phi */
   int index_tp_phi_prime;    /**< index value for metric fluctuation phi' */
@@ -479,6 +485,15 @@ struct perturbations_vector
   int index_pt_delta_ur; /**< density of ultra-relativistic neutrinos/relics */
   int index_pt_theta_ur; /**< velocity of ultra-relativistic neutrinos/relics */
   int index_pt_shear_ur; /**< shear of ultra-relativistic neutrinos/relics */
+  /*GBH_pt_start*/
+  int n_max_gbh;
+  int l_max_gbh;
+  int index_pt_delta_gbh; /**< delta of gbh neutrinos/relics in fa */ 
+  int index_pt_theta_gbh; /**< velocity of gbh neutrinos/relics in fa */ 
+  int index_pt_sigma_gbh; /**< shear of gbh neutrinos/relics in fa*/ 
+  int index_pt_Delta_gbh; /**< delta of gbh neutrinos/relics */ 
+  int index_pt_Sigma_gbh; /**< shear of gbh neutrinos/relics*/ 
+  /*GBH_pt_end*/
   int index_pt_l3_ur;    /**< l=3 of ultra-relativistic neutrinos/relics */
   int l_max_ur;          /**< max momentum in Boltzmann hierarchy (at least 3) */
   int index_pt_delta_idr; /**< density of interacting dark radiation */
@@ -629,6 +644,7 @@ struct perturbations_workspace
   int index_ap_rsa_idr; /**< index for dark radiation streaming approximation */
   int index_ap_ufa; /**< index for ur fluid approximation */
   int index_ap_ncdmfa; /**< index for ncdm fluid approximation */
+  int index_gbh_fa; /**< index for gbh fluid approximation */ //GBH_pt
   int ap_size;      /**< number of relevant approximations for a given mode */
 
   int * approx;     /**< array of approximation flags holding at a given time: approx[index_ap] */

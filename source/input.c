@@ -61,7 +61,7 @@ int input_init(int argc,
                ErrorMsg errmsg){
 
   /** Summary: */
-
+  
   /** Define local variables */
   struct file_content fc;        // Structure with all parameters
 
@@ -84,7 +84,7 @@ int input_init(int argc,
   class_call(parser_free(&fc),
              errmsg,
              errmsg);
-
+  
   return _SUCCESS_;
 
 }
@@ -395,7 +395,7 @@ int input_read_from_file(struct file_content * pfc,
 
 
   /** Summary: */
-
+  
   /** - Define local variables */
   int input_verbose = 0;
   int has_shooting;
@@ -448,7 +448,7 @@ int input_read_from_file(struct file_content * pfc,
                errmsg,
                errmsg);
   }
-
+  
   return _SUCCESS_;
 
 }
@@ -1535,6 +1535,7 @@ int input_try_unknown_parameters(double * unknown_parameter,
   if (pfzw->required_computation_stage < cs_background) {
     background_free_input(&ba);
   }
+
   return _SUCCESS_;
 
 }
@@ -2351,6 +2352,7 @@ int input_read_parameters_species(struct file_content * pfc,
   double f_cdm=1., f_idm=0.;
   short has_m_budget = _FALSE_, has_cdm_userdefined = _FALSE_;
   double Omega_m_remaining = 0.;
+  double T0_gbh,interpolated_rho; //GBH_bg
 
 
   sigma_B = 2.*pow(_PI_,5.)*pow(_k_B_,4.)/15./pow(_h_P_,3.)/pow(_c_,2);  // [W/(m^2 K^4) = Kg/(K^4 s^3)]
@@ -2698,6 +2700,8 @@ int input_read_parameters_species(struct file_content * pfc,
     Omega_m_remaining-= pba->Omega0_ncdm_tot;
   }
 
+
+
   /** 6) Omega_0_k (effective fractional density of curvature) */
   /* Read */
   class_read_double("Omega_k",pba->Omega0_k);
@@ -2712,6 +2716,132 @@ int input_read_parameters_species(struct file_content * pfc,
 
 
   /* 7) ** ADDITIONAL SPECIES ** --> Add your species here */
+
+  /*GBH_bg_start*/ //Generalized Boltzmann Hierarchy for Massive Neutrinos
+  /*GBH_pt_start*/
+  /** 7.0.0.-1) total number of species solved with gbh */  //remove this after perturbations module is ready
+  class_call(parser_read_double(pfc,"has_gbh_pt",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    pba->has_gbh_pt = param1; 
+  }
+  else
+    pba->has_gbh_pt = 0; //default: don't use
+  /*GBH_pt_end*/
+  
+  /** 7.0.0) total number of species solved with gbh */
+  class_call(parser_read_double(pfc,"N_gbh",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    pba->N_gbh = param1; 
+  }
+  /** 7.0.1) total mass of species solved with gbh */
+  class_call(parser_read_double(pfc,"M_gbh",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    T0_gbh = pow(4./11.,1./3.)*pba->T_cmb;
+    pba->M_gbh = param1/_k_B_*_eV_/T0_gbh; //this is x0
+  }
+  printf("\nx0= %e\n",pba->M_gbh);
+  /** 7.0.2) are we using a table for w_n's or are we integrating with quadrature */
+  class_call(parser_read_double(pfc,"gbh_use_table",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    if(param1==0){ //in this case, use quadrature strategy to find w_n's
+        ppr->gbh_use_table = 0;
+        pba->gbh_use_table = 0;
+        class_test(param1==0,
+               errmsg,
+               "You have chosen gbh_use_table=0. This is not yet implemented in the code. Use 1 to solve the hierarchy at the background level.");
+      }
+      else{ //in this case, use a pre-computed table of w_n's
+        ppr->gbh_use_table = 1;
+        pba->gbh_use_table = 1;
+      }
+  }
+  ppr->gbh_use_table = pba->gbh_use_table; //this is for the case where default pba->gbh_use_table=1 is being used (fo flag1=0)
+  /** 7.0.3) the directory of the table*/
+  if (pba->gbh_use_table == 1){
+    class_call(parser_read_list_of_strings(pfc,"gbh_w_table",&entries_read,&(pba->gbh_table_address),&flag1,errmsg),
+                    errmsg,
+                    errmsg);
+    class_test(flag1 == _FALSE_,errmsg,
+                  "Entry 'gbh_use_table' is 1, but no corresponding 'gbh_w_table' were found.");
+
+    class_call(parser_read_list_of_strings(pfc,"gbh_rho_table",&entries_read,&(pba->gbh_table_rho_address),&flag1,errmsg),
+                    errmsg,
+                    errmsg);
+    class_test(flag1 == _FALSE_,errmsg,
+                  "Entry 'gbh_use_table' is 1, but no corresponding 'gbh_rho_table' were found.");
+  }
+  /** 7.0.4) some precision parameters*/
+  class_call(parser_read_double(pfc,"n_max_gbh",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    ppr->n_max_gbh = param1;
+    pba->n_max_gbh = param1;
+    class_test(pba->n_max_gbh < 2, errmsg,
+                  "n_max_gbh should at least be 2 because perturbation equations need w[2].");
+  }
+  if (pba->gbh_use_table == 1){
+  class_call(parser_read_double(pfc,"n_max_gbh_table",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    pba->n_max_gbh_table = param1;
+    class_test(pba->n_max_gbh_table < pba->n_max_gbh + 1, errmsg,
+                  "There is not enough pre-computed w_n's for the required n_max_gbh.");
+  }
+
+
+  class_call(background_gbh_init(ppr,pba),  //this function computes the second derivatives of w_n's at given x values, preparing it for spline in background_functions
+               pba->error_message,
+               errmsg);
+  // Interpolate `rho` for GBH from the saved array of pre-computed values, for x=ma0/T0
+  pba->last_index_gbh = 0;
+  if(pba->M_gbh<=100.)
+  {
+    class_call(array_interpolate_spline(
+                                        pba->x_gbh_bg,
+                                        pba->x_size_gbh_bg,
+                                        pba->rho_gbh_bg,
+                                        pba->d2rho_gbh_bg,
+                                        1, //number of columns in rho_gbh_bg
+                                        pba->M_gbh,  // this is x0: the value at which we want interpolation
+                                        &pba->last_index_gbh,
+                                        &interpolated_rho,
+                                        1, //we want interpolation for 1 column only
+                                        pba->error_message),
+              pba->error_message, pba->error_message);
+  }
+  else
+  {
+    interpolated_rho = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * pba->M_gbh / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
+  }
+  pba->Omega0_gbh = interpolated_rho * pba->N_gbh * 15./pow(_PI_,2) * pow(4./11.,4./3.)*pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15
+  }
+  /*GBH_bg_end*/
+  /*GBH_pt_start*/
+  /** 7.0.5) the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
+  class_call(parser_read_double(pfc,"ubound_x_gbh",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    ppr->ubound_x_gbh = param1; 
+  }
+  /*GBH_pt_end*/
 
   /** 7.1) Decaying DM into DR */
   /** 7.1.a) Omega_0_dcdmdr (DCDM, i.e. decaying CDM) */
@@ -3206,6 +3336,7 @@ int input_read_parameters_species(struct file_content * pfc,
   Omega_tot += pba->Omega0_dcdmdr;
   Omega_tot += pba->Omega0_idr;
   Omega_tot += pba->Omega0_ncdm_tot;
+  Omega_tot += pba->Omega0_gbh;   //GBH_bg
   /* Step 1 */
   if (flag1 == _TRUE_){
     pba->Omega0_lambda = param1;
@@ -3351,7 +3482,6 @@ int input_read_parameters_species(struct file_content * pfc,
       printf("'scf_lambda' = %e < 3 won't be tracking (for exp quint) unless overwritten by tuning function.",scf_lambda);
     }
   }
-
   return _SUCCESS_;
 
 }
@@ -5763,6 +5893,15 @@ int input_default_params(struct background *pba,
   pba->deg_ncdm_default = 1.;
   pba->deg_ncdm = NULL;
   /** 5.h) --> See read_parameters_background */
+
+
+  /*GBH_bg_start*/  //if you're considering changing this, also change its default value in precisons.h
+  pba->N_gbh = 0;
+  pba->M_gbh = 0.06/_k_B_*_eV_/(pow(4./11.,1./3.)*pba->T_cmb);
+  pba->gbh_use_table = 1;
+  pba->n_max_gbh = 20;
+  pba->n_max_gbh_table = 31;  //starts from 1
+  /*GBH_bg_end*/
 
   /** 6) Curvature density */
   pba->Omega0_k = 0.;
