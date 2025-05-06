@@ -4052,7 +4052,7 @@ int perturbations_vector_init(
       x = k * pba->gbh_horizon;
       ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
       ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
-      printf("\nk: %e, n: %d, l: %d ",k,ppv->n_max_gbh,ppv->l_max_gbh);
+      //printf("\nk: %e, n: %d, l: %d ",k,ppv->n_max_gbh,ppv->l_max_gbh);
 
       class_test(ppv->n_max_gbh + ppv->l_max_gbh > pba->n_max_gbh, ppt->error_message,
                   "The background pba->n_max_gbh is smaller than the maximum index needed for w[] in perturbation equations. x= %e", x);

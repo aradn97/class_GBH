@@ -565,7 +565,7 @@ int background_functions(
     }
     //if(a>=1.)//test
     //  printf("\nInterpolated rho= %e, a= %e, x= %e, pba->rho_gbh_bg[pba->x_size_gbh_bg-1]= %e, pba->x_gbh_bg[pba->x_size_gbh_bg-1]=%e\n",interpolated_rho,a,current_x_value, pba->rho_gbh_bg[pba->x_size_gbh_bg-1],pba->x_gbh_bg[pba->x_size_gbh_bg-1]);
-    interpolated_rho = interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho.
+    interpolated_rho = interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
     pvecback[pba->index_bg_P_gbh] = interpolated_rho / 3.;
     //pvecback[pba->index_bg_P_gbh] = pvecback_B[pba->index_bi_P0_gbh];
     class_alloc(interpolated_w_n, sizeof(double) * (pba->n_max_gbh+1), pba->error_message);
@@ -609,7 +609,7 @@ int background_functions(
     free(interpolated_w_n);
 
     if(1./a-1.>=9.9e13)
-    printf("\na= %e,rho_gbh= %e, Omega0_gbh= %e, H02oa4= %e\n",a,interpolated_rho,interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(4./11.,4./3.)*pba->Omega0_g,pow(pba->H0,2)/pow(a,4));
+    printf("\na= %e,rho_gbh= %e, Omega0_gbh= %e, H02oa4= %e\n",a,interpolated_rho,interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(0.71611,4.)*pba->Omega0_g,pow(pba->H0,2)/pow(a,4));
   }
   /*GBH_bg_end*/
   /*GBH_pt_start*/
@@ -652,7 +652,7 @@ int background_functions(
     dp_dloga += -(4./3.) * pvecback[pba->index_bg_rho_ur];
     rho_r += pvecback[pba->index_bg_rho_ur];
     if(1./a-1.>=9.9e13)
-    printf("\na=%e, rho_ur= %e, pba->Omega0_ur= %e %e, H02oa4= %e\n",a,pvecback[pba->index_bg_rho_ur]/1.0176,pba->Omega0_ur/1.0176,7./8.*pow(4./11.,4./3.)*pba->Omega0_g,pow(pba->H0,2) / pow(a,4));
+    printf("\na=%e, rho_ur= %e, pba->Omega0_ur= %e %e, H02oa4= %e\n",a,pvecback[pba->index_bg_rho_ur]/1.0176,pba->Omega0_ur/1.0176,7./8.*pow(0.71611,4.)*pba->Omega0_g,pow(pba->H0,2) / pow(a,4));
   }
 
   /* interacting dark radiation */
@@ -2466,7 +2466,7 @@ int background_initial_conditions(
   if (pba->has_gbh == _TRUE_) {
   //this is commented for now until I do another implementation that solves for rho rather than reading from the table    /** - We must add the relativistic contribution from relativistic species that are being solved by GBH*/
      //pvecback_integration[pba->index_bi_P0_gbh] =1./3.*3.044*7./8.*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); 
-     rho_rad += 3. * 1./3.*pba->N_gbh*7./8.*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4);//pvecback_integration[pba->index_bi_P0_gbh];
+     rho_rad += 3. * 1./3.*pba->N_gbh*7./8.*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4);//pvecback_integration[pba->index_bi_P0_gbh]; // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
    }
   /*GBH_bg_end*/
   

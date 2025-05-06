@@ -2745,8 +2745,8 @@ int input_read_parameters_species(struct file_content * pfc,
              errmsg);
   /* Complete set of parameters */
   if (flag1 == _TRUE_){
-    T0_gbh = pow(4./11.,1./3.)*pba->T_cmb;
-    pba->M_gbh = param1/_k_B_*_eV_/T0_gbh; //this is x0
+    T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
+    pba->M_gbh = param1 / _k_B_ * _eV_ / T0_gbh; //this is x0
   }
   printf("\nx0= %e\n",pba->M_gbh);
   /** 7.0.2) are we using a table for w_n's or are we integrating with quadrature */
@@ -2829,7 +2829,7 @@ int input_read_parameters_species(struct file_content * pfc,
   {
     interpolated_rho = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * pba->M_gbh / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
   }
-  pba->Omega0_gbh = interpolated_rho * pba->N_gbh * 15./pow(_PI_,2) * pow(4./11.,4./3.)*pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15
+  pba->Omega0_gbh = interpolated_rho * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15 // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
   }
   /*GBH_bg_end*/
   /*GBH_pt_start*/
@@ -5732,6 +5732,7 @@ int input_default_params(struct background *pba,
   /** - Define local variables */
   struct injection* pin = &(pth->in);
   double sigma_B; /* Stefan-Boltzmann constant in \f$ W/m^2/K^4 = Kg/K^4/s^3 \f$*/
+  double T0_gbh; //GBH_bg
 
   sigma_B = 2. * pow(_PI_,5) * pow(_k_B_,4) / 15. / pow(_h_P_,3) / pow(_c_,2);
 
@@ -5897,7 +5898,8 @@ int input_default_params(struct background *pba,
 
   /*GBH_bg_start*/  //if you're considering changing this, also change its default value in precisons.h
   pba->N_gbh = 0;
-  pba->M_gbh = 0.06/_k_B_*_eV_/(pow(4./11.,1./3.)*pba->T_cmb);
+  T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
+  pba->M_gbh = 0.06 / _k_B_ * _eV_ /T0_gbh;
   pba->gbh_use_table = 1;
   pba->n_max_gbh = 20;
   pba->n_max_gbh_table = 31;  //starts from 1
