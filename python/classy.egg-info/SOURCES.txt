@@ -1,6 +1,6 @@
 README
 setup.py
-/mmfs1/gscratch/cosmo/msarav/class_ghb/class_GBH/python/../python/classy.pyx
+/mmfs1/gscratch/cosmo/msarav/class_gbh/class_GBH/python/../python/classy.pyx
 classy.egg-info/PKG-INFO
 classy.egg-info/SOURCES.txt
 classy.egg-info/dependency_links.txt

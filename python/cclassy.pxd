@@ -66,10 +66,13 @@ cdef extern from "class.h":
         int index_bg_rho_b
         int index_bg_rho_cdm
         int index_bg_rho_ncdm1
+        int index_bg_rho_gbh #GBH Murali
         int index_bg_rho_crit
         short has_cdm
-        short  has_ncdm
+        short has_ncdm
+        short has_gbh #GBH Murali
         int N_ncdm
+        int N_gbh #GBH Murali
         double T_cmb
         double h
         double H0
@@ -192,6 +195,7 @@ cdef extern from "class.h":
         short has_source_delta_dr
         short has_source_delta_ur
         short has_source_delta_ncdm
+        short has_source_delta_gbh #GBH Murali
         short has_source_theta_m
         short has_source_theta_cb
         short has_source_theta_tot
@@ -206,6 +210,7 @@ cdef extern from "class.h":
         short has_source_theta_dr
         short has_source_theta_ur
         short has_source_theta_ncdm
+        short has_source_theta_gbh #GBH Murali
         short has_source_phi
         short has_source_phi_prime
         short has_source_phi_plus_psi
@@ -235,6 +240,7 @@ cdef extern from "class.h":
         int index_tp_delta_ur
         int index_tp_delta_idr
         int index_tp_delta_ncdm1
+        int index_tp_delta_gbh #GBH Murali
 
         int index_tp_theta_m
         int index_tp_theta_cb
@@ -250,6 +256,7 @@ cdef extern from "class.h":
         int index_tp_theta_idm
         int index_tp_theta_dr
         int index_tp_theta_ncdm1
+        int index_tp_theta_gbh #GBH Murali
 
         int index_tp_phi
         int index_tp_phi_prime

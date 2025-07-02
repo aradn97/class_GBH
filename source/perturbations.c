@@ -6661,6 +6661,7 @@ int perturbations_approximations(
       //if (k > ppr->ubound_x_gbh/pba->gbh_horizon) { //if you use this condition instead, only x0=kT_0 will be used to switch to fluid approx.;
                                                       //so for a given k, there won't be any switching during integration 
       if (k > ppr->ubound_x_gbh/ppw->pvecback[pba->index_bg_fs_gbh]) {
+      //if (tau/tau_k > ppr->ncdm_fluid_trigger_tau_over_tau_k){ // Murali Saravanan, 6/27
         ppw->approx[ppw->index_gbh_fa] = (int)gbh_fa_on;
       }
       else {
