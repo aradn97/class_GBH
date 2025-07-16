@@ -3259,8 +3259,7 @@ int perturbations_solve(
                                perhaps_print_variables,
                                ppt->error_message),
                ppt->error_message,
-               ppt->error_message);
-
+               ppt->error_message); 
   }
 
   /** - if perturbations were printed in a file, close the file */
@@ -3876,6 +3875,16 @@ int perturbations_vector_init(
   ppv->l_max_ncdm = NULL;
   ppv->q_size_ncdm = NULL;
 
+  /*GBH_pt_start*/ 
+    if (pba->has_gbh_pt == _TRUE_) {
+      ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
+      ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
+      x = k * pba->gbh_horizon;
+      class_test(ppv->n_max_gbh + ppv->l_max_gbh > pba->n_max_gbh, ppt->error_message,
+                  "The background pba->n_max_gbh is smaller than the maximum index needed for w[] in perturbation equations. x= %e", x);
+    }
+  /*GBH_pt_end*/
+
   /** - define all indices in this new vector (depends on approximation scheme, described by the input structure ppw-->pa) */
 
   index_pt = 0;
@@ -4049,13 +4058,8 @@ int perturbations_vector_init(
     /*GBH_pt_start*/
     if (pba->has_gbh_pt == _TRUE_) {
     if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off) {
-      x = k * pba->gbh_horizon;
-      ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
-      ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
-      //printf("\nk: %e, n: %d, l: %d ",k,ppv->n_max_gbh,ppv->l_max_gbh);
-
-      class_test(ppv->n_max_gbh + ppv->l_max_gbh > pba->n_max_gbh, ppt->error_message,
-                  "The background pba->n_max_gbh is smaller than the maximum index needed for w[] in perturbation equations. x= %e", x);
+      // ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
+      // ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
       class_define_index(ppv->index_pt_Delta_gbh,_TRUE_,index_pt,ppv->n_max_gbh); /* pressure moments in Boltzmann hierarchy */
       class_define_index(ppv->index_pt_Sigma_gbh,_TRUE_,index_pt,(ppv->n_max_gbh)*(ppv->l_max_gbh)); /* angular moments in Boltzmann hierarchy */
     }
@@ -9272,6 +9276,7 @@ int perturbations_derivs(double tau,
 
   /* for GBH species*/
   double w_gbh,p_gbh,pseudo_p_gbh,ca2_gbh,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; //GBH_pt
+  double * w;
 
   /* for use with curvature */
   double cotKgen, sqrt_absK;
@@ -10118,7 +10123,9 @@ int perturbations_derivs(double tau,
     /*GBH_pt_start*/ 
     if(pba->has_gbh_pt == _TRUE_){
       int N = pv->n_max_gbh+pv->l_max_gbh+1,ll,n;
-      double w[N];
+      //fprintf(stdout, "\n error!!! %d",N); fflush(stdout);
+      class_alloc(w,sizeof(double)*N,ppt->error_message);
+      
       if (ppt->gauge == newtonian) {
         
         if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {//fluid approximation eqs go here
@@ -10127,6 +10134,7 @@ int perturbations_derivs(double tau,
         pseudo_p_gbh = pvecback[pba->index_bg_P_gbh+2]; /* pseudo-pressure (see CLASS IV paper) */
         w_gbh = p_gbh/pvecback[pba->index_bg_P_gbh]/3.; /* equation of state parameter */
         ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */
+        
 
         /* c_eff is (delta p / delta rho) in the gauge under
             consideration (not in the gauge comoving with the
@@ -10181,7 +10189,7 @@ int perturbations_derivs(double tau,
         
         }
         else{//GBH eqs 
-          //printf("\nhello world\n");//test
+          
           for(n=0;n<N;n++)
           {
             w[n] = pvecback[pba->index_bg_P_gbh+n]/pvecback[pba->index_bg_P_gbh]/3.;
@@ -10239,7 +10247,7 @@ int perturbations_derivs(double tau,
               }
               dy[pv->index_pt_Sigma_gbh+n*pv->l_max_gbh+ll-1] = -(2.*n + 1.*ll + (-5.*w[1]+w[2])/(1.+w[1]))*a_prime_over_a*y[pv->index_pt_Sigma_gbh+n*pv->l_max_gbh+ll-1] + (2.*n+1.*ll-1.)*a_prime_over_a*sigma_ns + 1.*ll*ll/(4.*ll*ll-1.)*k*sigma_np - k*sigma_sn + delta_l1;
             }
-          }     
+          }    
         }
       }
 
@@ -10249,6 +10257,7 @@ int perturbations_derivs(double tau,
         printf("\n!!WARNING!!: You are using synchronous gauge. GBH has been implemented on Newtonian gauge only.\n");
       }
     
+      free(w);
 
     }
 
