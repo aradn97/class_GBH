@@ -390,6 +390,10 @@ int background_functions(
   double rho_r;
   /* total non-relativistic density */
   double rho_m;
+  /* total matter+neutrino density */
+  double rho_M; //GBH_bg
+  /* background gbh quantities */
+  double rho_gbh,P_min1; //GBH_bg
   /* background ncdm quantities */
   double rho_ncdm,p_ncdm,pseudo_p_ncdm;
   /* index for n_ncdm species */
@@ -418,6 +422,7 @@ int background_functions(
   dp_dloga = 0.;
   rho_r=0.;
   rho_m=0.;
+  rho_M=0.; //GBH_bg
 
   class_test(a <= 0.,
              pba->error_message,
@@ -440,6 +445,7 @@ int background_functions(
   rho_tot += pvecback[pba->index_bg_rho_b];
   p_tot += 0;
   rho_m += pvecback[pba->index_bg_rho_b];
+  rho_M += pvecback[pba->index_bg_rho_b]; //GBH_bg
 
   /* cdm */
   if (pba->has_cdm == _TRUE_) {
@@ -447,6 +453,7 @@ int background_functions(
     rho_tot += pvecback[pba->index_bg_rho_cdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_cdm];
+    rho_M += pvecback[pba->index_bg_rho_cdm]; //GBH_bg
   }
 
   /* idm */
@@ -455,6 +462,7 @@ int background_functions(
     rho_tot += pvecback[pba->index_bg_rho_idm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_idm];
+    rho_M += pvecback[pba->index_bg_rho_idm]; //GBH_bg
   }
 
   /* dcdm */
@@ -464,6 +472,7 @@ int background_functions(
     rho_tot += pvecback[pba->index_bg_rho_dcdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_dcdm];
+    rho_M += pvecback[pba->index_bg_rho_dcdm]; //GBH_bg
   }
 
   /* dr */
@@ -493,6 +502,7 @@ int background_functions(
     //divide relativistic & nonrelativistic (not very meaningful for oscillatory models)
     rho_r += 3.*pvecback[pba->index_bg_p_scf]; //field pressure contributes radiation
     rho_m += pvecback[pba->index_bg_rho_scf] - 3.* pvecback[pba->index_bg_p_scf]; //the rest contributes matter
+    rho_M += pvecback[pba->index_bg_rho_scf] - 3.* pvecback[pba->index_bg_p_scf]; 
     //printf(" a= %e, Omega_scf = %f, \n ",a, pvecback[pba->index_bg_rho_scf]/rho_tot );
   }
 
@@ -536,6 +546,7 @@ int background_functions(
       /* (rho_ncdm1 - 3 p_ncdm1) is the "non-relativistic" contribution
          to rho_ncdm1 */
       rho_m += rho_ncdm - 3.* p_ncdm;
+      rho_M += rho_ncdm; //GBH_bg
     }
   }
 
@@ -563,6 +574,23 @@ int background_functions(
     {
       interpolated_integral = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * current_x_value / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
     }
+    /* function returning background gbh quantities from quadrature integration (only
+         those for which non-NULL pointers are passed) */
+    class_call(background_gbh_momenta(
+                                        pba->q_gbh_bg,
+                                        pba->weights_gbh_bg,
+                                        pba->q_size_gbh_bg,
+                                        pba->M_gbh,
+                                        pba->factor_gbh,
+                                        1./a-1.,
+                                        NULL,
+                                        &rho_gbh,
+                                        NULL,
+                                        &P_min1),
+                pba->error_message,
+                pba->error_message);
+    pvecback[pba->index_bg_rho_gbh] = rho_gbh;
+    pvecback[pba->index_bg_P_min1_gbh] = P_min1;
     //if(a>=1.)//test
     //  printf("\nInterpolated rho= %e, a= %e, x= %e, pba->rho_gbh_bg[pba->x_size_gbh_bg-1]= %e, pba->x_gbh_bg[pba->x_size_gbh_bg-1]=%e\n",interpolated_rho,a,current_x_value, pba->rho_gbh_bg[pba->x_size_gbh_bg-1],pba->x_gbh_bg[pba->x_size_gbh_bg-1]);
     interpolated_rho = interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
@@ -604,6 +632,7 @@ int background_functions(
       /* (rho_gbh - 3 p_gbh) is the "non-relativistic" contribution
          to energy density */
     rho_m += 3.*pvecback[pba->index_bg_P_gbh] - 3.* pvecback[pba->index_bg_P_gbh+1];
+    rho_M += 3.*pvecback[pba->index_bg_P_gbh];
 
     // Free the dynamically allocated memory for interpolated_w_n
     free(interpolated_w_n);
@@ -614,7 +643,10 @@ int background_functions(
   /*GBH_bg_end*/
   /*GBH_pt_start*/
   if(pba->has_gbh == _TRUE_){
-    pvecback[pba->index_bg_fs_gbh] = pvecback_B[pba->index_bi_fs_gbh];
+    pvecback[pba->index_bg_app_horizon_gbh] = pvecback_B[pba->index_bi_app_horizon_gbh]; // approximate neutrino horizon T
+    pvecback[pba->index_bg_horizon_gbh] = pvecback_B[pba->index_bi_horizon_gbh]; // neutrino horizon lambda_hor
+    pvecback[pba->index_bg_lambda_gbh] = pvecback_B[pba->index_bi_lambda_gbh]; // lambda=w_{-1} of neutrinos
+    pvecback[pba->index_bg_Pminus1_gbh] = pvecback_B[pba->index_bi_Pminus1_gbh]; // P_{-1} of neutrinos
   }
   /*GBH_pt_end*/
 
@@ -651,6 +683,7 @@ int background_functions(
     p_tot += (1./3.) * pvecback[pba->index_bg_rho_ur];
     dp_dloga += -(4./3.) * pvecback[pba->index_bg_rho_ur];
     rho_r += pvecback[pba->index_bg_rho_ur];
+    rho_M += pvecback[pba->index_bg_rho_ur]; //GBH_bg
     if(1./a-1.>=9.9e13)
     printf("\na=%e, rho_ur= %e, pba->Omega0_ur= %e %e, H02oa4= %e\n",a,pvecback[pba->index_bg_rho_ur]/1.0176,pba->Omega0_ur/1.0176,7./8.*pow(0.71611,4.)*pba->Omega0_g,pow(pba->H0,2) / pow(a,4));
   }
@@ -704,6 +737,9 @@ int background_functions(
 
     /** - compute Omega_m */
     pvecback[pba->index_bg_Omega_m] = rho_m / rho_crit;
+
+    /** - compute Omega_M */
+    pvecback[pba->index_bg_Omega_M] = rho_M / rho_crit;
 
     /** - cosmological time */
     pvecback[pba->index_bg_time] = pvecback_B[pba->index_bi_time];
@@ -1034,6 +1070,10 @@ int background_free_input(
   }
   /*GBH_bg_start*/
   if(pba->has_gbh == _TRUE_){
+  free(pba->q_gbh_bg);
+  free(pba->weights_gbh_bg);
+  free(pba->dlnf0_dlnq_gbh);
+
   free(pba->x_gbh_bg);
   free(pba->w_gbh_bg);
   free(pba->d2w_gbh_bg);
@@ -1160,10 +1200,19 @@ int background_indices(
   class_define_index(pba->index_bg_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_pseudo_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   /* - index for n GBH moments*/
+  class_define_index(pba->index_bg_P_min1_gbh,pba->has_gbh,index_bg,1); //GBH_bg
+  class_define_index(pba->index_bg_rho_gbh,pba->has_gbh,index_bg,1); //GBH_bg
   class_define_index(pba->index_bg_P_gbh,pba->has_gbh,index_bg,pba->n_max_gbh+1); //GBH_bg
 
-  /* -> free streaming distance of massive neutrinos solved by gbh */
-  class_define_index(pba->index_bg_fs_gbh,pba->has_gbh,index_bg,1); //GBH_pt
+  /*GBH_pt_start*/
+  /* -> comoving horizon of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bg_app_horizon_gbh,pba->has_gbh,index_bg,1); 
+  class_define_index(pba->index_bg_horizon_gbh,pba->has_gbh,index_bg,1); 
+  /* -> w_{-1}=lambda of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bg_lambda_gbh,pba->has_gbh,index_bg,1); 
+  /* -> P_{-1}=lambda of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bg_Pminus1_gbh,pba->has_gbh,index_bg,1); 
+  /*GBH_pt_end*/
   
 
   /* - index for dcdm */
@@ -1223,6 +1272,9 @@ int background_indices(
   /* - index for Omega_m (non-relativistic density fraction) */
   class_define_index(pba->index_bg_Omega_m,_TRUE_,index_bg,1);
 
+  /* - index for Omega_m, including neutrinos */
+  class_define_index(pba->index_bg_Omega_M,_TRUE_,index_bg,1);
+
   /* -> conformal distance */
   class_define_index(pba->index_bg_conf_distance,_TRUE_,index_bg,1);
 
@@ -1266,8 +1318,15 @@ int background_indices(
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
   /* -> energy density in gbh zeroth moment (energy density/3) */ 
   //class_define_index(pba->index_bi_P0_gbh,pba->has_gbh,index_bi,1); //GBH_bg
-  /* -> free streaming distance of massive neutrinos solved by gbh */
-  class_define_index(pba->index_bi_fs_gbh,pba->has_gbh,index_bi,1); //GBH_pt
+  /*GBH_pt_start*/
+  /* -> comoving horizon of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bi_app_horizon_gbh,pba->has_gbh,index_bi,1); 
+  class_define_index(pba->index_bi_horizon_gbh,pba->has_gbh,index_bi,1); 
+  /* -> w_{-1} of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bi_lambda_gbh,pba->has_gbh,index_bi,1); 
+  /* -> P_{-1} of massive neutrinos solved by gbh */
+  class_define_index(pba->index_bi_Pminus1_gbh,pba->has_gbh,index_bi,1); 
+  /*GBH_pt_end*/
 
   /* -> energy density in DCDM */
   class_define_index(pba->index_bi_rho_dcdm,pba->has_dcdm,index_bi,1);
@@ -1438,6 +1497,35 @@ int background_ncdm_distribution(
       }
     } /* end of region not used, but shown as an example */
   }
+
+  return _SUCCESS_;
+}
+
+
+/**
+ * Analytic Fermi‐Dirac distribution for GBH.
+ * This mirrors the “else” branch of background_ncdm_distribution
+ *
+ * @param  pbdist   Input: pointer to background_parameters_for_distributions
+ *                   (here, pbdist->tablesize == 0, q == NULL)
+ * @param  q        Input: comoving momentum
+ * @param  f0       Output: f₀(q) in units [1/(2π)³]
+ */
+int background_gbh_distribution(
+                                void * pbadist,
+                                double q,
+                                double * f0
+                                ) {
+  struct background * pba; // for future, if your gbh distribution function admits more parameters, read them from pbadist
+  struct background_parameters_for_distributions * pbadist_local;
+  /** - extract from the input structure pbadist all the relevant information */
+  pbadist_local = pbadist;          /* restore actual format of pbadist */
+  pba = pbadist_local->pba;         /* extract the background structure from it */
+
+  
+  /* Fermi‐Dirac */
+  *f0 = (1.0 / pow(2 * _PI_, 3))
+        * (2.0 / (exp(q) + 1.0));
 
   return _SUCCESS_;
 }
@@ -1712,8 +1800,11 @@ int background_gbh_init(
 
   FILE *w_table;
   char buffer[1024]; // Buffer for reading lines
-  int row, status;
-  double tmp1; //for the first read
+  int row, status, index_q, tolexp;
+  double tmp1; // for the first read
+  double f0m2,f0m1,f0,f0p1,f0p2,df0dq,dq,q;
+  struct background_parameters_for_distributions pbadist;
+
 
   pba->last_index_gbh = 0; //this will be used by spline function to perform faster binary searches when interpolating, using the previous interpolated index
 
@@ -1807,13 +1898,167 @@ int background_gbh_init(
   
   
   }
+
+  /*performing quadrature for bg*/
+  pbadist.pba = pba; 
+  pbadist.n_ncdm     = 0;     /* dummy index; we ignore it in our GBH distribution */
+  pbadist.tablesize  = 0;     /* no external table */
+  pbadist.q          = NULL;  /* signal to distribution fn: use analytic expression */
+  pbadist.f0         = NULL;
+  pbadist.d2f0       = NULL;
+  pbadist.last_index = 0;
+  
+  class_alloc(pba->q_gbh_bg,_QUADRATURE_MAX_BG_*sizeof(double),pba->error_message);
+  class_alloc(pba->weights_gbh_bg,_QUADRATURE_MAX_BG_*sizeof(double),pba->error_message);
+  class_call(get_qsampling(pba->q_gbh_bg,
+                               pba->weights_gbh_bg,
+                               &(pba->q_size_gbh_bg),
+                               _QUADRATURE_MAX_BG_,
+                               ppr->tol_ncdm_bg, // use same tolerance as ncdm
+                               pbadist.q,
+                               pbadist.tablesize,
+                               background_ncdm_test_function, // also the test function is the same as ncdm
+                               background_gbh_distribution,
+                               &pbadist,
+                               pba->error_message),
+                 pba->error_message,
+                 pba->error_message);
+
+  class_realloc(pba->q_gbh_bg,pba->q_size_gbh_bg*sizeof(double), pba->error_message);
+  class_realloc(pba->weights_gbh_bg,pba->q_size_gbh_bg*sizeof(double), pba->error_message);
+
+  if (pba->background_verbose > 0) {
+    printf("GBH species sampled with %d points (background)\n", pba->q_size_gbh_bg);
+  }
+
+  class_alloc(pba->dlnf0_dlnq_gbh,
+              pba->q_size_gbh_bg*sizeof(double),
+              pba->error_message);
+
+  for (index_q=0; index_q<pba->q_size_gbh_bg; index_q++) {
+    q = pba->q_gbh_bg[index_q];
+    class_call(background_gbh_distribution(&pbadist,q,&f0),
+                pba->error_message,pba->error_message);
+
+    //Loop to find appropriate dq:
+    for (tolexp=_PSD_DERIVATIVE_EXP_MIN_; tolexp<_PSD_DERIVATIVE_EXP_MAX_; tolexp++) {
+
+      if (index_q == 0) {
+        dq = MIN((0.5-ppr->smallest_allowed_variation)*q,2*exp(tolexp)*(pba->q_gbh_bg[index_q+1]-q));
+      }
+      else if (index_q == pba->q_size_gbh_bg-1) {
+        dq = exp(tolexp)*2.0*(pba->q_gbh_bg[index_q]-pba->q_gbh_bg[index_q-1]);
+      }
+      else{
+        dq = exp(tolexp)*(pba->q_gbh_bg[index_q+1]-pba->q_gbh_bg[index_q-1]);
+      }
+
+      class_call(background_gbh_distribution(&pbadist,q-2*dq,&f0m2),
+                  pba->error_message,pba->error_message);
+      class_call(background_gbh_distribution(&pbadist,q+2*dq,&f0p2),
+                  pba->error_message,pba->error_message);
+
+      if (fabs((f0p2-f0m2)/f0)>sqrt(ppr->smallest_allowed_variation)) break;
+    }
+
+    class_call(background_gbh_distribution(&pbadist,q-dq,&f0m1),
+                pba->error_message,pba->error_message);
+    class_call(background_gbh_distribution(&pbadist,q+dq,&f0p1),
+                pba->error_message,pba->error_message);
+    //5 point estimate of the derivative:
+    df0dq = (+f0m2-8*f0m1+8*f0p1-f0p2)/12.0/dq;
+    //Avoid underflow in extreme tail:
+    if (fabs(f0)==0.)
+      pba->dlnf0_dlnq_gbh[index_q] = -q; /* valid for whatever f0 with exponential tail in exp(-q) */
+    else
+      pba->dlnf0_dlnq_gbh[index_q] = q/f0*df0dq;
+  }
+
+  pba->factor_gbh=4*_PI_*pow(0.71611*pba->T_cmb*_k_B_,4)*8*_PI_*_G_
+    /3./pow(_h_P_/2./_PI_,3)/pow(_c_,7)*_Mpc_over_m_*_Mpc_over_m_;
+
+  
+
   printf("\ncheck3\n");
   return _SUCCESS_;
 }
 /*GBH_bg_end*/
 
 
+/*GBH_bg_start*/
+/**
+ * For GBH species: given the quadrature weights, the mass
+ * and the redshift, find background quantities by a quick weighted
+ * sum over.  Input parameters passed as NULL pointers are not
+ * evaluated for speed-up
+ *
+ * @param qvec     Input: sampled momenta
+ * @param wvec     Input: quadrature weights
+ * @param qsize    Input: number of momenta/weights
+ * @param M        Input: mass
+ * @param factor   Input: normalization factor for the p.s.d.
+ * @param z        Input: redshift
+ * @param n        Output: number density
+ * @param rho      Output: energy density
+ * @param p        Output: pressure
+ * @param P_min1   Output: P_{-1} used in the asymptotic sound speed
+ *
+ */
 
+int background_gbh_momenta(
+                            /* Only calculate for non-NULL pointers: */
+                            double * qvec,
+                            double * wvec,
+                            int qsize,
+                            double M,
+                            double factor,
+                            double z,
+                            double * n,
+                            double * rho, // density
+                            double * p,   // pressure
+                            double * P_min1  // P_{-1} used in the asymptotic sound speed
+                            ) {
+
+  int index_q;
+  double epsilon;
+  double q2;
+  double factor2;
+  /** Summary: */
+
+  /** - rescale normalization at given redshift */
+  factor2 = factor*pow(1+z,4);
+
+  /** - initialize quantities */
+  if (n!=NULL) *n = 0.;
+  if (rho!=NULL) *rho = 0.;
+  if (p!=NULL) *p = 0.;
+  if (P_min1!=NULL) *P_min1 = 0.;
+
+  /** - loop over momenta */
+  for (index_q=0; index_q<qsize; index_q++) {
+
+    /* squared momentum */
+    q2 = qvec[index_q]*qvec[index_q];
+
+    /* energy */
+    epsilon = sqrt(q2+M*M/(1.+z)/(1.+z));
+
+    /* integrand of the various quantities */
+    if (n!=NULL) *n += q2*wvec[index_q];
+    if (rho!=NULL) *rho += q2*epsilon*wvec[index_q];
+    if (p!=NULL) *p += q2*q2/3./epsilon*wvec[index_q];
+    if (P_min1!=NULL) *P_min1 += pow(epsilon,3.)/3.*wvec[index_q];
+  }
+
+  /** - adjust normalization */
+  if (n!=NULL) *n *= factor2/(1.+z);
+  if (rho!=NULL) *rho *= factor2;
+  if (p!=NULL) *p *= factor2;
+  if (P_min1!=NULL) *P_min1 *= factor2;
+
+  return _SUCCESS_;
+}
+/*GBH_bg_end*/
 
 
 
@@ -1897,6 +2142,7 @@ int background_ncdm_momenta(
 
   return _SUCCESS_;
 }
+
 
 /**
  * When the user passed the density fraction Omega_ncdm or
@@ -2228,8 +2474,8 @@ int background_solve(
   /* -> conformal age in Mpc */
   pba->conformal_age = pvecback_integration[pba->index_bi_tau];
   /* -> conformal free streaming length of GBH species */
-  if (pba->has_gbh == _TRUE_) {
-    pba->gbh_horizon = pvecback_integration[pba->index_bi_fs_gbh];
+  if (pba->has_gbh == _TRUE_) { //GBH_pt
+    pba->gbh_horizon = pvecback_integration[pba->index_bi_app_horizon_gbh];
   }
   /* -> contribution of decaying dark matter and dark radiation to the critical density today: */
   if (pba->has_dcdm == _TRUE_) {
@@ -2396,6 +2642,7 @@ int background_initial_conditions(
   double a;
 
   double rho_ncdm, p_ncdm, rho_ncdm_rel_tot=0.;
+  double rho_gbh, p_gbh;
   double f,Omega_rad, rho_rad;
   int counter,is_early_enough,n_ncdm;
   double scf_lambda;
@@ -2464,9 +2711,42 @@ int background_initial_conditions(
   }
   /*GBH_bg_start*/
   if (pba->has_gbh == _TRUE_) {
-  //this is commented for now until I do another implementation that solves for rho rather than reading from the table    /** - We must add the relativistic contribution from relativistic species that are being solved by GBH*/
-     //pvecback_integration[pba->index_bi_P0_gbh] =1./3.*3.044*7./8.*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); 
-     rho_rad += 3. * 1./3.*pba->N_gbh*7./8.*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4);//pvecback_integration[pba->index_bi_P0_gbh]; // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
+
+    for (counter=0; counter < _MAX_IT_; counter++) {
+
+      is_early_enough = _TRUE_;
+      class_call(background_ncdm_momenta(pba->q_gbh_bg,
+                                          pba->weights_gbh_bg,
+                                          pba->q_size_gbh_bg,
+                                          pba->M_gbh,
+                                          pba->factor_gbh,
+                                          1./a-1.0,
+                                          NULL,
+                                          &rho_gbh,
+                                          &p_gbh,
+                                          NULL,
+                                          NULL),
+                  pba->error_message,
+                  pba->error_message);
+      rho_ncdm_rel_tot += 3.*p_ncdm;
+      if (fabs(p_gbh/rho_gbh-1./3.)>ppr->tol_ncdm_initial_w) { // use the same tolerance as ncdm
+        is_early_enough = _FALSE_;
+      }
+      
+      if (is_early_enough == _TRUE_) {
+        break;
+      }
+      else {
+        a *= _SCALE_BACK_;
+      }
+    }
+    class_test(counter == _MAX_IT_,
+               pba->error_message,
+               "Search for initial scale factor a such that gbh species are relativistic failed.");
+
+    //this is commented for now until I do another implementation that solves for rho rather than reading from the table    /** - We must add the relativistic contribution from relativistic species that are being solved by GBH*/
+    //pvecback_integration[pba->index_bi_P0_gbh] =1./3.*3.044*7./8.*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); 
+    rho_rad += 3. * 1./3.*pba->N_gbh*7./8.*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4);//pvecback_integration[pba->index_bi_P0_gbh]; // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
    }
   /*GBH_bg_end*/
   
@@ -2583,7 +2863,10 @@ int background_initial_conditions(
 
   /*GBH_pt_start*/
   if (pba->has_gbh == _TRUE_) {
-      pvecback_integration[pba->index_bi_fs_gbh] = pvecback_integration[pba->index_bi_tau]; //equal to tau initially
+      pvecback_integration[pba->index_bi_app_horizon_gbh] = pvecback_integration[pba->index_bi_tau]; //equal to tau initially
+      pvecback_integration[pba->index_bi_horizon_gbh] = pvecback_integration[pba->index_bi_tau]; 
+      pvecback_integration[pba->index_bi_lambda_gbh] = 1./3.; // w_{-1}=1/3 initially, like all other w's 
+      pvecback_integration[pba->index_bi_Pminus1_gbh] = pvecback[pba->index_bg_P_gbh]; // P_{-1} = P_gbh initially equals rho/3.
   }
   /*GBH_pt_end*/
 
@@ -2719,6 +3002,8 @@ int background_output_titles(
   }
   /*GBH_bg_start*/
   if (pba->has_gbh == _TRUE_) {
+    class_store_columntitle(titles,"(.)P_min1_gbh",pba->has_gbh); 
+    class_store_columntitle(titles,"(.)rho_gbh",pba->has_gbh); 
     for (n=0; n<pba->n_max_gbh+1; n++)
     {
       sprintf(tmp,"(.)P_gbh_[%d]",n);
@@ -2726,8 +3011,12 @@ int background_output_titles(
     }
   }
   /*GBH_bg_end*/
-  class_store_columntitle(titles,"(.)fs_gbh",pba->has_gbh); //GBH_pt
-
+  /*GBH_pt_start*/
+  class_store_columntitle(titles,"(.)app_horizon_gbh",pba->has_gbh); 
+  class_store_columntitle(titles,"(.)horizon_gbh",pba->has_gbh); 
+  class_store_columntitle(titles,"(.)lambda_gbh",pba->has_gbh);
+  class_store_columntitle(titles,"(.)Pminus1_gbh",pba->has_gbh); 
+  /*GBH_pt_end*/
   class_store_columntitle(titles,"(.)rho_lambda",pba->has_lambda);
   class_store_columntitle(titles,"(.)rho_fld",pba->has_fld);
   class_store_columntitle(titles,"(.)w_fld",pba->has_fld);
@@ -2803,13 +3092,20 @@ int background_output_data(
     }
     /*GBH_bg_start*/
     if (pba->has_gbh == _TRUE_) { 
+      class_store_double(dataptr,pvecback[pba->index_bg_P_min1_gbh],pba->has_gbh,storeidx);
+      class_store_double(dataptr,pvecback[pba->index_bg_rho_gbh],pba->has_gbh,storeidx); 
       for (n=0; n<pba->n_max_gbh+1; n++)
       {
         class_store_double(dataptr,pvecback[pba->index_bg_P_gbh+n],pba->has_gbh,storeidx); 
       }
     }
     /*GBH_bg_end*/
-    class_store_double(dataptr,pvecback[pba->index_bg_fs_gbh],pba->has_gbh,storeidx); //GBH_pt
+    /*GBH_pt_start*/
+    class_store_double(dataptr,pvecback[pba->index_bg_app_horizon_gbh],pba->has_gbh,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_horizon_gbh],pba->has_gbh,storeidx); 
+    class_store_double(dataptr,pvecback[pba->index_bg_lambda_gbh],pba->has_gbh,storeidx); 
+    class_store_double(dataptr,pvecback[pba->index_bg_Pminus1_gbh],pba->has_gbh,storeidx); 
+    /*GBH_pt_end*/
     class_store_double(dataptr,pvecback[pba->index_bg_rho_lambda],pba->has_lambda,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_fld],pba->has_fld,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_w_fld],pba->has_fld,storeidx);
@@ -2885,6 +3181,7 @@ int background_derivs(
   struct background_parameters_and_workspace * pbpaw;
   struct background * pba;
   double * pvecback, a, H, rho_M;
+  double w_gbh,c_asp,lambda; //GBH_pt
 
   pbpaw = parameters_and_workspace;
   pba =  pbpaw->pba;
@@ -2917,20 +3214,10 @@ int background_derivs(
   /** - solve second order growth equation \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$
       written as \f$ dD/dloga = D' / (aH) \f$ and \f$ dD'/dloga = -D' + (3/2) (a/H) \rho_M D \f$ */
   rho_M = pvecback[pba->index_bg_rho_b];
+
   if (pba->has_cdm == _TRUE_) {
     rho_M += pvecback[pba->index_bg_rho_cdm];
   }
-
-  /*GBH_bg_start*/
-  // if (pba->has_gbh == _TRUE_){
-  //   dy[pba->index_bi_P0_gbh] = -3.*y[pba->index_bi_P0_gbh] - pvecback[pba->index_bg_P_gbh+1]; //the evolution of energy density
-  // }
-  /*GBH_bg_end*/
-  /*GBH_pt_start*/
-  if (pba->has_gbh == _TRUE_){
-    dy[pba->index_bi_fs_gbh] = 1./(a*H*sqrt(1.+pba->M_gbh*a/3.));
-  }
-  /*GBH_pt_end*/
 
   if (pba->has_idm == _TRUE_){
     rho_M += pvecback[pba->index_bg_rho_idm];
@@ -2948,6 +3235,23 @@ int background_derivs(
     /** - Compute dr density \f$ d\rho/dloga = -4\rho - \Gamma/H \rho \f$ */
     dy[pba->index_bi_rho_dr] = -4.*y[pba->index_bi_rho_dr]+pba->Gamma_dcdm/H*y[pba->index_bi_rho_dcdm];
   }
+
+  /*GBH_bg_start*/
+  // if (pba->has_gbh == _TRUE_){
+  //   dy[pba->index_bi_P0_gbh] = -3.*y[pba->index_bi_P0_gbh] - pvecback[pba->index_bg_P_gbh+1]; //the evolution of energy density
+  // }
+  /*GBH_bg_end*/
+  /*GBH_pt_start*/
+  if (pba->has_gbh == _TRUE_){
+    w_gbh = pvecback[pba->index_bg_P_gbh + 1] / pvecback[pba->index_bg_P_gbh] / 3.;
+    lambda = pvecback[pba->index_bg_P_min1_gbh] / pvecback[pba->index_bg_P_gbh] / 3.;
+    c_asp = sqrt(1./3. * (1. + w_gbh)/(1. + lambda));
+    dy[pba->index_bi_app_horizon_gbh] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh * a / 3., 2.)));
+    dy[pba->index_bi_horizon_gbh] = sqrt(3.) * c_asp / (a * H);//2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); ///TEST!!!
+    dy[pba->index_bi_lambda_gbh] = -(1. + y[pba->index_bi_lambda_gbh]) + 3. * y[pba->index_bi_lambda_gbh] * (1. + w_gbh);
+    dy[pba->index_bi_Pminus1_gbh] = -y[pba->index_bi_Pminus1_gbh] - 3. * pvecback[pba->index_bg_P_gbh];
+  }
+  /*GBH_pt_end*/
 
   if (pba->has_fld == _TRUE_) {
     /** - Compute fld density \f$ d\rho/dloga = -3 (1+w_{fld}(a)) \rho \f$ */

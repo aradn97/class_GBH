@@ -2803,6 +2803,7 @@ int input_read_parameters_species(struct file_content * pfc,
     class_test(pba->n_max_gbh_table < pba->n_max_gbh + 1, errmsg,
                   "There is not enough pre-computed w_n's for the required n_max_gbh.");
   }
+  
 
 
   class_call(background_gbh_init(ppr,pba),  //this function computes the second derivatives of w_n's at given x values, preparing it for spline in background_functions
@@ -2840,6 +2841,17 @@ int input_read_parameters_species(struct file_content * pfc,
   /* Complete set of parameters */
   if (flag1 == _TRUE_){
     ppr->ubound_x_gbh = param1; 
+  }
+  /** 7.0.6) Fluid approximation method */
+  class_call(parser_read_double(pfc,"GBH_fluid_approx_method",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  class_test((param1 != 0) && (param1 != 1) && (param1 != 2) && (param1 != 3),
+             errmsg,
+             "The parameter 'GBH_fluid_approx_method' must be an integer between 0 and 3. Got %e", param1);
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    ppr->gbh_fluid_approximation = param1; 
   }
   /*GBH_pt_end*/
 

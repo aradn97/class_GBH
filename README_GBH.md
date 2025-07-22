@@ -113,4 +113,22 @@ DONE 40. be careful that n_max at perturbations doesn't exceed n_max of tables. 
 41. We have no analogue for ncdmfa_none
 42. We don't have class_define_index(ppt->index_tp_delta_gbh,   ppt->has_source_delta_gbh,  index_type,1); why
 43. make sure in precision.h, evolver is ndf15
+44. if you change the definition of Omega_m in neutrino horizon, change both k_fs_gbh def in perturbations and horizon_gbh in background (the latter is integrated)
+45. Resolve the two ***Pending*** issues in perturbations.c
+46. in dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); I'm using index_bg_Omega_M which includes relativistic neutrinos as well as non-relativistic. If we use index_bg_Omega_m we get zero in the denominator.
+Also Omega_m = pvecback[pba->index_bg_Omega_M]; in perturbations.
+47. GBH chemical potential is assumed to be zero, gbh degeneracy parameter assumed to be one (equivalent to deg_ncdm)
+48. use only one 0.71611. now you're using it both in input and background modules
+49. use quadrature rho_gbh at initial condition
+50. remove rho_M as the matter density that includes neutrinos even if non-rel
+51. for(n=0;n<N;n++)
+          {
+            w[n] = pvecback[pba->index_bg_P_gbh+n]/pvecback[pba->index_bg_P_gbh]/3.;
+          }
+          should be modified for speed-up, not to calculate it each time.
 
+52. I had made the deadly mistake of defining ppv->n_max_gbh = 16;
+      ppv->l_max_gbh = 8;
+      only when fluid approx is off, but then I was using these numbers to define N and w[N] in
+      perturbations_derivs outside the condition that checks whether we're doing GBH or fluid approx.
+      This was giving huge memory issues.
