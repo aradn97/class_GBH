@@ -198,6 +198,7 @@ struct background
   int index_bg_p_scf;         /**< scalar field pressure */
   int index_bg_p_prime_scf;         /**< scalar field pressure */
 
+  int index_bg_P_min1_ncdm1;   /**< P_{-1} of first ncdm species (others contiguous) */
   int index_bg_rho_ncdm1;     /**< density of first ncdm species (others contiguous) */
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
   int index_bg_pseudo_p_ncdm1;/**< another statistical momentum useful in ncdma approximation */
@@ -567,7 +568,8 @@ extern "C" {
                               double * rho,
                               double * p,
                               double * drho_dM,
-                              double * pseudo_p
+                              double * pseudo_p,
+                              double * p_min1 /*ncdm_caio_fa*/
                               );
 
   int background_ncdm_M_from_Omega(

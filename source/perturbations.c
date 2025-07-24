@@ -760,7 +760,7 @@ int perturbations_init(
   if (pba->has_ncdm == _TRUE_) {
 
     class_test ((ppr->ncdm_fluid_approximation < ncdmfa_mb) ||
-                (ppr->ncdm_fluid_approximation > ncdmfa_none),
+                (ppr->ncdm_fluid_approximation > ncdmfa_caio), /*ncdm_caio_fa*/
                 ppt->error_message,
                 "your ncdm_fluid_approximation is set to %d, out of range defined in perturbations.h",ppr->ncdm_fluid_approximation);
 
@@ -6437,6 +6437,7 @@ int perturbations_initial_conditions(struct precision * ppr,
   return _SUCCESS_;
 }
 
+
 /**
  * Evaluate background/thermodynamics at \f$ \tau \f$, infer useful flags / time scales for integrating perturbations.
  *
@@ -7471,13 +7472,20 @@ int perturbations_total_stress_energy(
           if ((ppt->has_source_delta_ncdm == _TRUE_) || (ppt->has_source_theta_ncdm == _TRUE_) || (ppt->has_source_delta_m == _TRUE_)) {
             ppw->delta_ncdm[n_ncdm] = y[idx];
             ppw->theta_ncdm[n_ncdm] = y[idx+1];
-            ppw->shear_ncdm[n_ncdm] = y[idx+2];
+            if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
+              ppw->shear_ncdm[n_ncdm] = y[idx+2];
+            else /*ncdm_caio_fa*/
+              ppw->shear_ncdm[n_ncdm] = 0.0; /* ***Pending*** */            
           }
 
           ppw->delta_rho += rho_ncdm_bg*y[idx];
           ppw->rho_plus_p_theta += rho_plus_p_ncdm*y[idx+1];
-          ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
+          if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
+            ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
+          else /*ncdm_caio_fa*/
+            ppw->rho_plus_p_shear += 0.0; /* ***Pending*** */
           ppw->delta_p += cg2_ncdm*rho_ncdm_bg*y[idx];
+          
 
           ppw->rho_plus_p_tot += rho_plus_p_ncdm;
 
@@ -7502,6 +7510,7 @@ int perturbations_total_stress_energy(
             rho_delta_ncdm += q2*epsilon*pba->w_ncdm[n_ncdm][index_q]*y[idx];
             rho_plus_p_theta_ncdm += q2*q*pba->w_ncdm[n_ncdm][index_q]*y[idx+1];
             rho_plus_p_shear_ncdm += q2*q2/epsilon*pba->w_ncdm[n_ncdm][index_q]*y[idx+2];
+
             delta_p_ncdm += q2*q2/epsilon*pba->w_ncdm[n_ncdm][index_q]*y[idx];
 
             //Jump to next momentum bin:
@@ -7557,7 +7566,7 @@ int perturbations_total_stress_energy(
         if(ppr->gbh_fluid_approximation != gbh_fa_caio)
           sigma_gbh = y[ppw->pv->index_pt_sigma_gbh]; 
         else
-          sigma_gbh = 0.; //* ***Pending*** */
+          sigma_gbh = 0.; /* ***Pending*** */
         pseudo_p_gbh = ppw->pvecback[pba->index_bg_P_gbh+2];
         cg2_gbh = w_gbh*(1.0-1.0/(3.0+3.0*w_gbh)*(3.0*w_gbh-2.0+pseudo_p_gbh/p_gbh));
         ppw->delta_p += cg2_gbh*rho_gbh*delta_gbh; //GBH_backreaction   
@@ -8820,7 +8829,10 @@ int perturbations_print_variables(double tau,
 
           delta_ncdm[n_ncdm] = y[idx];
           theta_ncdm[n_ncdm] = y[idx+1];
-          shear_ncdm[n_ncdm] = y[idx+2];
+          if(ppr->ncdm_fluid_approximation != ncdmfa_caio)  
+            shear_ncdm[n_ncdm] = y[idx+2];
+          else /*ncdm_caio_fa*/
+            shear_ncdm[n_ncdm] = 0.0; /* ***Pending*** */
           //This is the adiabatic sound speed:
           delta_p_over_delta_rho_ncdm[n_ncdm] = w_ncdm*(1.0-1.0/(3.0+3.0*w_ncdm)*(3.0*w_ncdm-2.0+pseudo_p_ncdm/p_ncdm_bg));
           idx += ppw->pv->l_max_ncdm[n_ncdm]+1;
@@ -9286,6 +9298,8 @@ int perturbations_derivs(double tau,
   int index_q,n_ncdm,idx;
   double q,epsilon,dlnf0_dlnq,qk_div_epsilon;
   double rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm,w_ncdm,ca2_ncdm,ceff2_ncdm=0.,cvis2_ncdm=0.;
+  /*ncdm_caio_fa*/
+  double c2_asp_ncdm,lambda_ncdm,k_fs_ncdm,k_horizon_ncdm,sigma_ncdm;
 
   /* for GBH species*/
   /*GBH_pt_start*/ 
@@ -10030,7 +10044,7 @@ int perturbations_derivs(double tau,
           pseudo_p_ncdm = pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm]; /* pseudo-pressure (see CLASS IV paper) */
           w_ncdm = p_ncdm_bg/rho_ncdm_bg; /* equation of state parameter */
           ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */
-
+          lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg; /*ncdm_caio_fa*/ 
           rho_m += rho_ncdm_bg; //GBH_pt
 
           /* c_eff is (delta p / delta rho) in the gauge under
@@ -10043,14 +10057,31 @@ int perturbations_derivs(double tau,
           if (ppr->ncdm_fluid_approximation == ncdmfa_mb) {
             ceff2_ncdm = ca2_ncdm;
             cvis2_ncdm = 3.*w_ncdm*ca2_ncdm;
+            sigma_ncdm = y[idx+2];
           }
           if (ppr->ncdm_fluid_approximation == ncdmfa_hu) {
             ceff2_ncdm = ca2_ncdm;
             cvis2_ncdm = w_ncdm;
+            sigma_ncdm = y[idx+2];
           }
           if (ppr->ncdm_fluid_approximation == ncdmfa_CLASS) {
             ceff2_ncdm = ca2_ncdm;
             cvis2_ncdm = 3.*w_ncdm*ca2_ncdm;
+            sigma_ncdm = y[idx+2];
+          }
+          /*ncdm_caio_fa*/
+          if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
+            ceff2_ncdm = ca2_ncdm;
+            c2_asp_ncdm = (1. + w_ncdm) / (1. + lambda_ncdm) / 3.;
+            class_test(c2_asp_ncdm<0., ppt->error_message,
+                  "ncdm asymptotic sound speed squared is negative.");
+
+            
+            k_fs_ncdm = 2. * _PI_ * a_prime_over_a / sqrt(3.*c2_asp_ncdm);//sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp_ncdm);TEST!!!
+            k_horizon_ncdm = 2. * _PI_ / pvecback[pba->index_bg_horizon_gbh]; /* ***Pending*** */
+            ceff2_ncdm = ca2_ncdm + (c2_asp_ncdm - ca2_ncdm) * exp(-4. / 3. * k_fs_ncdm / k);
+            sigma_ncdm=1./k2 * (-2./5. * k_horizon_ncdm / k * exp(-k_horizon_ncdm / k) * ceff2_ncdm / (1. + w_ncdm) *k2*y[idx] + k/k_fs_ncdm*exp(-5.*k_fs_ncdm/k)*w_ncdm*w_ncdm*y[idx+1]);
+
           }
 
           /** - -----> exact continuity equation */
@@ -10061,7 +10092,7 @@ int perturbations_derivs(double tau,
           /** - -----> exact euler equation */
 
           dy[idx+1] = -a_prime_over_a*(1.0-3.0*ca2_ncdm)*y[idx+1]+
-            ceff2_ncdm/(1.0+w_ncdm)*k2*y[idx]-k2*y[idx+2]
+            ceff2_ncdm/(1.0+w_ncdm)*k2*y[idx]-k2*sigma_ncdm
             + metric_euler;
 
           /** - -----> different ansatz for approximate shear derivative */
@@ -10084,6 +10115,12 @@ int perturbations_derivs(double tau,
 
             dy[idx+2] = -3.0*(a_prime_over_a*(2./3.-ca2_ncdm-pseudo_p_ncdm/p_ncdm_bg/3.)+1./tau)*y[idx+2]
               +8.0/3.0*cvis2_ncdm/(1.0+w_ncdm)*s_l[2]*(y[idx+1]+metric_ufa_class);
+
+          }
+          /*ncdm_caio_fa*/
+          if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
+
+            dy[idx+2] = 0.0; //instead of removing this index from the system, I am setting it to a constant, equal to its value at the transition from Boltzmann hierarchy to fluid approximation
 
           }
 

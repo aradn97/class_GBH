@@ -44,6 +44,8 @@ Flags used for implementing the Generalized Boltzmann Hierarchy are explained he
     The files include:
         background.c    background.h
 
+3) /*ncdm_caio_fa*/ determines the places where Caio's FA affects ncdm code.
+
 
 
 
@@ -114,7 +116,7 @@ DONE 40. be careful that n_max at perturbations doesn't exceed n_max of tables. 
 42. We don't have class_define_index(ppt->index_tp_delta_gbh,   ppt->has_source_delta_gbh,  index_type,1); why
 43. make sure in precision.h, evolver is ndf15
 44. if you change the definition of Omega_m in neutrino horizon, change both k_fs_gbh def in perturbations and horizon_gbh in background (the latter is integrated)
-45. Resolve the two ***Pending*** issues in perturbations.c
+45. Resolve the ***Pending*** issues in perturbations.c
 46. in dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); I'm using index_bg_Omega_M which includes relativistic neutrinos as well as non-relativistic. If we use index_bg_Omega_m we get zero in the denominator.
 Also Omega_m = pvecback[pba->index_bg_Omega_M]; in perturbations.
 47. GBH chemical potential is assumed to be zero, gbh degeneracy parameter assumed to be one (equivalent to deg_ncdm)
@@ -132,3 +134,6 @@ Also Omega_m = pvecback[pba->index_bg_Omega_M]; in perturbations.
       only when fluid approx is off, but then I was using these numbers to define N and w[N] in
       perturbations_derivs outside the condition that checks whether we're doing GBH or fluid approx.
       This was giving huge memory issues.
+
+53. free streaming scale at the moment does not include Omega_m. Fix it.
+54. Don't get other inputs for gbh if N_gbh=0. put a condition in input.c

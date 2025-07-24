@@ -2668,7 +2668,8 @@ int input_read_parameters_species(struct file_content * pfc,
                                            &rho_ncdm,
                                            NULL,
                                            NULL,
-                                           NULL),
+                                           NULL,
+                                           NULL), /*ncdm_caio_fa*/
                    pba->error_message,
                    errmsg);
         if (pba->Omega0_ncdm[n] == 0.0){
@@ -2748,7 +2749,7 @@ int input_read_parameters_species(struct file_content * pfc,
     T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
     pba->M_gbh = param1 / _k_B_ * _eV_ / T0_gbh; //this is x0
   }
-  printf("\nx0= %e\n",pba->M_gbh);
+  
   /** 7.0.2) are we using a table for w_n's or are we integrating with quadrature */
   class_call(parser_read_double(pfc,"gbh_use_table",&param1,&flag1,errmsg),
              errmsg,

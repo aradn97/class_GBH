@@ -45,7 +45,7 @@ enum rsa_method {rsa_null,rsa_MD,rsa_MD_with_reio,rsa_none};
 enum idr_method {idr_free_streaming,idr_fluid}; /* for the idm-idr case */
 enum rsa_idr_method {rsa_idr_none,rsa_idr_MD};  /* for the idm-idr case */
 enum ufa_method {ufa_mb,ufa_hu,ufa_CLASS,ufa_none};
-enum ncdmfa_method {ncdmfa_mb,ncdmfa_hu,ncdmfa_CLASS,ncdmfa_none};
+enum ncdmfa_method {ncdmfa_mb,ncdmfa_hu,ncdmfa_CLASS,ncdmfa_none,ncdmfa_caio};
 enum gbh_fa_method {gbh_fa_mb,gbh_fa_hu,gbh_fa_CLASS,gbh_fa_caio}; //GBH_pt
 enum tensor_methods {tm_photons_only,tm_massless_approximation,tm_exact};
 

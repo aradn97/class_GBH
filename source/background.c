@@ -395,7 +395,7 @@ int background_functions(
   /* background gbh quantities */
   double rho_gbh,P_min1; //GBH_bg
   /* background ncdm quantities */
-  double rho_ncdm,p_ncdm,pseudo_p_ncdm;
+  double rho_ncdm,p_ncdm,pseudo_p_ncdm,p_min1_ncdm; /*ncdm_caio_fa*/
   /* index for n_ncdm species */
   int n_ncdm;
   /* index for gbh hierarchy */
@@ -525,17 +525,18 @@ int background_functions(
                                          &rho_ncdm,
                                          &p_ncdm,
                                          NULL,
-                                         &pseudo_p_ncdm),
+                                         &pseudo_p_ncdm,
+                                         &p_min1_ncdm),
                  pba->error_message,
                  pba->error_message);
 
       pvecback[pba->index_bg_rho_ncdm1+n_ncdm] = rho_ncdm;
-      if(1./a-1.>=9.9e13)
-      printf("\na= %e,rho_ncdm= %e\n",a,rho_ncdm);
+      
 
       rho_tot += rho_ncdm;
       pvecback[pba->index_bg_p_ncdm1+n_ncdm] = p_ncdm;
       p_tot += p_ncdm;
+      pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] = p_min1_ncdm; /*ncdm_caio_fa*/
       pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm] = pseudo_p_ncdm;
       /** See e.g. Eq. A6 in 1811.00904. */
       dp_dloga += (pseudo_p_ncdm - 5*p_ncdm);
@@ -636,9 +637,6 @@ int background_functions(
 
     // Free the dynamically allocated memory for interpolated_w_n
     free(interpolated_w_n);
-
-    if(1./a-1.>=9.9e13)
-    printf("\na= %e,rho_gbh= %e, Omega0_gbh= %e, H02oa4= %e\n",a,interpolated_rho,interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(0.71611,4.)*pba->Omega0_g,pow(pba->H0,2)/pow(a,4));
   }
   /*GBH_bg_end*/
   /*GBH_pt_start*/
@@ -684,8 +682,6 @@ int background_functions(
     dp_dloga += -(4./3.) * pvecback[pba->index_bg_rho_ur];
     rho_r += pvecback[pba->index_bg_rho_ur];
     rho_M += pvecback[pba->index_bg_rho_ur]; //GBH_bg
-    if(1./a-1.>=9.9e13)
-    printf("\na=%e, rho_ur= %e, pba->Omega0_ur= %e %e, H02oa4= %e\n",a,pvecback[pba->index_bg_rho_ur]/1.0176,pba->Omega0_ur/1.0176,7./8.*pow(0.71611,4.)*pba->Omega0_g,pow(pba->H0,2) / pow(a,4));
   }
 
   /* interacting dark radiation */
@@ -1196,6 +1192,7 @@ int background_indices(
   /* - indices for ncdm. We only define the indices for ncdm1
      (density, pressure, pseudo-pressure), the other ncdm indices
      are contiguous */
+  class_define_index(pba->index_bg_P_min1_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_caio_fa*/
   class_define_index(pba->index_bg_rho_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_pseudo_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
@@ -1826,21 +1823,19 @@ int background_gbh_init(
     }
     rewind(w_table); // Set file pointer to the beginning of the file
     pba->x_size_gbh_bg = row - 1 + 1; //-1 since the last iteration increases row by 1 and then exits-- +1 because we'll add x=0 by hand
-    printf("\npba->x_size_gbh_bg: %d\n",pba->x_size_gbh_bg);
-    printf("\npba->n_max_gbh_table: %d\n",pba->n_max_gbh_table);
+    
     // Skip the header line again after rewinding
     fgets(buffer, sizeof(buffer), w_table);
-    printf("\ncheck-1\n");
     /*Allocate room for interpolation table: */
     class_alloc(pba->x_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
     class_alloc(pba->w_gbh_bg,sizeof(double)*pba->n_max_gbh_table*pba->x_size_gbh_bg,pba->error_message);
     class_alloc(pba->d2w_gbh_bg,sizeof(double)*pba->n_max_gbh_table*pba->x_size_gbh_bg,pba->error_message);
-    printf("\ncheck0\n");
+    
     //the case of x=0:
     pba->x_gbh_bg[0] = 0.0;
     for (int col = 0; col < pba->n_max_gbh_table; col++) 
       pba->w_gbh_bg[col] = 1./3.; 
-    printf("\ncheck1\n");
+    
     for (row=1; row<pba->x_size_gbh_bg; row++) { // start from row=+1 because w[row=0] corresponds to x=0 which is not in the table
       status = fscanf(w_table, "%lf", &pba->x_gbh_bg[row]); // Read the x value
       for (int col = 0; col < pba->n_max_gbh_table; col++) {
@@ -1879,7 +1874,7 @@ int background_gbh_init(
     class_alloc(pba->d2rho_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
     //the case of x=0:
     pba->rho_gbh_bg[0] = 7./8.*pow(_PI_,2)/15.;
-    printf("\ncheck2\n");
+    
     for (row=1; row<pba->x_size_gbh_bg; row++) {//start from row=+1 because rho[row=0] corresponds to x=0 which is not in the table
       status = fscanf(w_table, "%lf", &tmp1); // Read the x value
       status = fscanf(w_table, "%lf", &pba->rho_gbh_bg[row]); // Read rho values; +1 because rho[0] corresponds to x=0 which is not in the table
@@ -1979,7 +1974,7 @@ int background_gbh_init(
 
   
 
-  printf("\ncheck3\n");
+  
   return _SUCCESS_;
 }
 /*GBH_bg_end*/
@@ -2097,7 +2092,8 @@ int background_ncdm_momenta(
                             double * rho, // density
                             double * p,   // pressure
                             double * drho_dM,  // d rho / d M used in next function
-                            double * pseudo_p  // pseudo-p used in ncdm fluid approx
+                            double * pseudo_p,  // pseudo-p used in ncdm fluid approx
+                            double * p_min1     // P_{-1} used in ncdm Caio fluid approx /*ncdm_caio_fa*/
                             ) {
 
   int index_q;
@@ -2115,6 +2111,7 @@ int background_ncdm_momenta(
   if (p!=NULL) *p = 0.;
   if (drho_dM!=NULL) *drho_dM = 0.;
   if (pseudo_p!=NULL) *pseudo_p = 0.;
+  if (p_min1!=NULL) *p_min1 = 0.; /*ncdm_caio_fa*/
 
   /** - loop over momenta */
   for (index_q=0; index_q<qsize; index_q++) {
@@ -2131,6 +2128,7 @@ int background_ncdm_momenta(
     if (p!=NULL) *p += q2*q2/3./epsilon*wvec[index_q];
     if (drho_dM!=NULL) *drho_dM += q2*M/(1.+z)/(1.+z)/epsilon*wvec[index_q];
     if (pseudo_p!=NULL) *pseudo_p += pow(q2/epsilon,3)/3.0*wvec[index_q];
+    if (p_min1!=NULL) *p_min1 += pow(epsilon,3.)/3.*wvec[index_q]; /*ncdm_caio_fa*/
   }
 
   /** - adjust normalization */
@@ -2139,6 +2137,7 @@ int background_ncdm_momenta(
   if (p!=NULL) *p *= factor2;
   if (drho_dM!=NULL) *drho_dM *= factor2;
   if (pseudo_p!=NULL) *pseudo_p *=factor2;
+  if (p_min1!=NULL) *p_min1 *=factor2; /*ncdm_caio_fa*/
 
   return _SUCCESS_;
 }
@@ -2174,7 +2173,8 @@ int background_ncdm_M_from_Omega(
                           &rho,
                           NULL,
                           NULL,
-                          NULL);
+                          NULL,
+                          NULL); /*ncdm_caio_fa*/
 
   /* Is the value of Omega less than a massless species?*/
   class_test(rho0<rho,pba->error_message,
@@ -2196,7 +2196,8 @@ int background_ncdm_M_from_Omega(
                             &rho,
                             NULL,
                             &drhodM,
-                            NULL);
+                            NULL,
+                            NULL); /*ncdm_caio_fa*/
 
     deltaM = (rho0-rho)/drhodM; /* By definition of the derivative */
     if ((M+deltaM)<0.0) deltaM = -M/2.0; /* Avoid overshooting to negative M value. */
@@ -2319,7 +2320,8 @@ int background_checks(
                                 &rho_ncdm_rel,
                                 NULL,
                                 NULL,
-                                NULL);
+                                NULL,
+                                NULL); /*ncdm_caio_fa*/
 
         /* inform user of the contribution of each species to
            radiation density (in relativistic limit): should be
@@ -2676,7 +2678,8 @@ int background_initial_conditions(
                                            &rho_ncdm,
                                            &p_ncdm,
                                            NULL,
-                                           NULL),
+                                           NULL,
+                                           NULL), /*ncdm_caio_fa*/
                    pba->error_message,
                    pba->error_message);
         rho_ncdm_rel_tot += 3.*p_ncdm;
@@ -2725,7 +2728,8 @@ int background_initial_conditions(
                                           &rho_gbh,
                                           &p_gbh,
                                           NULL,
-                                          NULL),
+                                          NULL,
+                                          NULL), /*ncdm_caio_fa*/
                   pba->error_message,
                   pba->error_message);
       rho_ncdm_rel_tot += 3.*p_ncdm;
