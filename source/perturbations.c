@@ -6438,6 +6438,59 @@ int perturbations_initial_conditions(struct precision * ppr,
 }
 
 
+
+
+
+
+
+/*ncdm_caio_FA*/
+/**
+ * Evaluate the functional form of shear, given neutrino horizon size, overdensity and velocity, and background quantities.
+ * This function is used whenever Caio's fluid approximation is demanded for either ncdm or GBH species.
+ * @param ceff2          Input/Output: effective sound speed squared
+ * @param sigma          Input/Output: shear
+ * @param w              Input: equation of state parameter
+ * @param lambda         Input: w_{-1}=P_{-1}/rho
+ * @param ca2            Input: adiabatic sound speed squared
+ * @param horizon        Input: horizon size = integral of free-streaming scale
+ * @param delta          Input: overdensity
+ * @param theta          Input: velocity
+ * @param a_prime_over_a Input: a'/a
+ * @param k              Input: wavenumber
+*/
+int perturbations_shear_caio(
+                             struct perturbations * ppt,
+                             double * ceff2_out,
+                             double * sigma,
+                             double w,
+                             double lambda,
+                             double ca2,
+                             double horizon,
+                             double delta,
+                             double theta,
+                             double a_prime_over_a,
+                             double k
+                             ) {
+
+  double k2 = k*k, k_fs, k_horizon;
+  double c2_asp = (1. + w) / (1. + lambda) / 3., c_eff2;
+  class_test(c2_asp<0., ppt->error_message,
+        "ncdm asymptotic sound speed squared is negative.");
+
+  k_fs = 2. * _PI_ * a_prime_over_a / sqrt(3.*c2_asp);//sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp);TEST!!!
+  k_horizon = 2. * _PI_ / horizon; 
+  
+  c_eff2 = ca2 + (c2_asp - ca2) * exp(-4. / 3. * k_fs / k);
+  if (ceff2_out != NULL)    
+    * ceff2_out = c_eff2;
+  * sigma = 1./k2 * (-2./5. * k_horizon / k * exp(-k_horizon / k) * c_eff2 / (1. + w) * k2 * delta + k / k_fs * exp(-5.*k_fs/k) * w * w * theta);
+  
+  return _SUCCESS_;
+}
+
+
+
+
 /**
  * Evaluate background/thermodynamics at \f$ \tau \f$, infer useful flags / time scales for integrating perturbations.
  *
@@ -7197,7 +7250,8 @@ int perturbations_total_stress_energy(
   double rho_plus_p_ncdm;
   int index_q,n_ncdm,idx;
   double epsilon,q,q2,cg2_ncdm,w_ncdm,rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm;
-  double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,cg2_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
+  double sigma_ncdm,lambda_ncdm,ca2_ncdm; /*ncdm_caio_fa*/
+  double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,ca2_gbh,cg2_gbh,lambda_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
   double w_fld,dw_over_da_fld,integral_fld;
   double gwncdm;
   double rho_relativistic;
@@ -7474,16 +7528,48 @@ int perturbations_total_stress_energy(
             ppw->theta_ncdm[n_ncdm] = y[idx+1];
             if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
               ppw->shear_ncdm[n_ncdm] = y[idx+2];
-            else /*ncdm_caio_fa*/
-              ppw->shear_ncdm[n_ncdm] = 0.0; /* ***Pending*** */            
+            else{/*ncdm_caio_fa*/
+              lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+              ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
+              class_call(perturbations_shear_caio(ppt,
+                                                  NULL, 
+                                                  &sigma_ncdm, //this will be overwritten inside the function
+                                                  w_ncdm,
+                                                  lambda_ncdm,
+                                                  ca2_ncdm,
+                                                  ppw->pvecback[pba->index_bg_horizon_gbh], /* ***Pending*** */
+                                                  y[idx],
+                                                  y[idx+1],
+                                                  a_prime_over_a,
+                                                  k
+                                                  ), 
+                         pba->error_message, ppt->error_message);
+              ppw->shear_ncdm[n_ncdm] = sigma_ncdm;
+            }          
           }
 
           ppw->delta_rho += rho_ncdm_bg*y[idx];
           ppw->rho_plus_p_theta += rho_plus_p_ncdm*y[idx+1];
           if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
             ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
-          else /*ncdm_caio_fa*/
-            ppw->rho_plus_p_shear += 0.0; /* ***Pending*** */
+          else{ /*ncdm_caio_fa*/
+            lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+            ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
+            class_call(perturbations_shear_caio(ppt,
+                                                NULL, 
+                                                &sigma_ncdm, //this will be overwritten inside the function
+                                                w_ncdm,
+                                                lambda_ncdm,
+                                                ca2_ncdm,
+                                                ppw->pvecback[pba->index_bg_horizon_gbh], /* ***Pending*** */
+                                                y[idx],
+                                                y[idx+1],
+                                                a_prime_over_a,
+                                                k
+                                                ), 
+                        pba->error_message, ppt->error_message);
+            ppw->rho_plus_p_shear += rho_plus_p_ncdm*sigma_ncdm; 
+          }
           ppw->delta_p += cg2_ncdm*rho_ncdm_bg*y[idx];
           
 
@@ -7558,16 +7644,31 @@ int perturbations_total_stress_energy(
       rho_gbh = 3.*ppw->pvecback[pba->index_bg_P_gbh];
       p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1];
       rho_plus_p_gbh = rho_gbh + p_gbh;
-      w_gbh = p_gbh/rho_gbh;
 
       if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on){
         delta_gbh = y[ppw->pv->index_pt_delta_gbh];
         theta_gbh = y[ppw->pv->index_pt_theta_gbh];
+        w_gbh = p_gbh/rho_gbh;
+        pseudo_p_gbh = ppw->pvecback[pba->index_bg_P_gbh+2];
         if(ppr->gbh_fluid_approximation != gbh_fa_caio)
           sigma_gbh = y[ppw->pv->index_pt_sigma_gbh]; 
-        else
-          sigma_gbh = 0.; /* ***Pending*** */
-        pseudo_p_gbh = ppw->pvecback[pba->index_bg_P_gbh+2];
+        else{
+          lambda_gbh = ppw->pvecback[pba->index_bg_P_min1_gbh] / rho_gbh;
+          ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */ 
+          class_call(perturbations_shear_caio(ppt,
+                                              NULL, 
+                                              &sigma_gbh, //this will be overwritten inside the function
+                                              w_gbh,
+                                              lambda_gbh,
+                                              ca2_gbh,
+                                              ppw->pvecback[pba->index_bg_horizon_gbh],
+                                              delta_gbh,
+                                              theta_gbh,
+                                              a_prime_over_a,
+                                              k
+                                              ), 
+                      pba->error_message, ppt->error_message);
+        }
         cg2_gbh = w_gbh*(1.0-1.0/(3.0+3.0*w_gbh)*(3.0*w_gbh-2.0+pseudo_p_gbh/p_gbh));
         ppw->delta_p += cg2_gbh*rho_gbh*delta_gbh; //GBH_backreaction   
       } 
@@ -8622,6 +8723,7 @@ int perturbations_print_variables(double tau,
   int n_ncdm;
   double *delta_ncdm=NULL, *theta_ncdm=NULL, *shear_ncdm=NULL, *delta_p_over_delta_rho_ncdm=NULL;
   double rho_ncdm_bg, p_ncdm_bg, pseudo_p_ncdm, w_ncdm;
+  double lambda_ncdm,ca2_ncdm; /*ncdm_caio_fa*/
   double rho_delta_ncdm = 0.0;
   double rho_plus_p_theta_ncdm = 0.0;
   double rho_plus_p_shear_ncdm = 0.0;
@@ -8630,6 +8732,7 @@ int perturbations_print_variables(double tau,
   double q,q2,epsilon;
   /** - ncdm sector ends */
   double delta_gbh, delta1_gbh, theta_gbh, theta1_gbh, sigma_gbh, sigma1_gbh; //GBH_pt
+  double rho_gbh, p_gbh, pseudo_p_gbh, w_gbh, lambda_gbh, ca2_gbh; //GBH_pt
   double phi=0.,psi=0.,alpha=0.;
   double delta_temp=0., delta_chi=0.;
 
@@ -8691,6 +8794,7 @@ int perturbations_print_variables(double tau,
   a = pvecback[pba->index_bg_a];
   a2 = a*a;
   H = pvecback[pba->index_bg_H];
+  
 
   if (pba->has_ncdm == _TRUE_){
     class_alloc(delta_ncdm, sizeof(double)*pba->N_ncdm,error_message);
@@ -8831,8 +8935,23 @@ int perturbations_print_variables(double tau,
           theta_ncdm[n_ncdm] = y[idx+1];
           if(ppr->ncdm_fluid_approximation != ncdmfa_caio)  
             shear_ncdm[n_ncdm] = y[idx+2];
-          else /*ncdm_caio_fa*/
-            shear_ncdm[n_ncdm] = 0.0; /* ***Pending*** */
+          else{ /*ncdm_caio_fa*/
+            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+            ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
+            class_call(perturbations_shear_caio(ppt,
+                                                NULL, 
+                                                &shear_ncdm[n_ncdm], //this will be overwritten inside the function
+                                                w_ncdm,
+                                                lambda_ncdm,
+                                                ca2_ncdm,
+                                                ppw->pvecback[pba->index_bg_horizon_gbh], /* ***Pending*** */
+                                                delta_ncdm[n_ncdm],
+                                                theta_ncdm[n_ncdm],
+                                                a * H,
+                                                k
+                                                ), 
+                         pba->error_message, ppt->error_message);
+          }
           //This is the adiabatic sound speed:
           delta_p_over_delta_rho_ncdm[n_ncdm] = w_ncdm*(1.0-1.0/(3.0+3.0*w_ncdm)*(3.0*w_ncdm-2.0+pseudo_p_ncdm/p_ncdm_bg));
           idx += ppw->pv->l_max_ncdm[n_ncdm]+1;
@@ -8885,8 +9004,27 @@ int perturbations_print_variables(double tau,
         theta_gbh = y[ppw->pv->index_pt_theta_gbh];
         if(ppr->gbh_fluid_approximation != gbh_fa_caio)
           sigma_gbh = y[ppw->pv->index_pt_sigma_gbh];
-        else
-          sigma_gbh = 0.; /* ***Pending*** */
+        else{
+             rho_gbh = 3.*ppw->pvecback[pba->index_bg_P_gbh];
+             p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1];
+             w_gbh = p_gbh/rho_gbh;
+             lambda_gbh = ppw->pvecback[pba->index_bg_P_min1_gbh] / rho_gbh;
+             pseudo_p_gbh = ppw->pvecback[pba->index_bg_P_gbh+2]; /* pseudo-pressure (see CLASS IV paper) */
+             ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */
+             class_call(perturbations_shear_caio(ppt,
+                                                 NULL, 
+                                                 &sigma_gbh, //this will be overwritten inside the function
+                                                 w_gbh,
+                                                 lambda_gbh,
+                                                 ca2_gbh,
+                                                 ppw->pvecback[pba->index_bg_horizon_gbh], 
+                                                 delta_gbh,
+                                                 theta_gbh,
+                                                 a * H,
+                                                 k
+                                                 ), 
+                         pba->error_message, ppt->error_message);
+        }
         delta1_gbh=0.;
         theta1_gbh=0.; 
         sigma1_gbh=0.;  
@@ -9299,12 +9437,12 @@ int perturbations_derivs(double tau,
   double q,epsilon,dlnf0_dlnq,qk_div_epsilon;
   double rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm,w_ncdm,ca2_ncdm,ceff2_ncdm=0.,cvis2_ncdm=0.;
   /*ncdm_caio_fa*/
-  double c2_asp_ncdm,lambda_ncdm,k_fs_ncdm,k_horizon_ncdm,sigma_ncdm;
+  double lambda_ncdm,sigma_ncdm;
 
   /* for GBH species*/
   /*GBH_pt_start*/ 
-  double w_gbh,p_gbh,pseudo_p_gbh,ca2_gbh,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; 
-  double c2_asp,lambda_gbh,k_fs_gbh,k_horizon_gbh,rho_m=0.,Omega_m,sigma_gbh;
+  double w_gbh,rho_gbh,p_gbh,pseudo_p_gbh,ca2_gbh,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; 
+  double lambda_gbh,rho_m=0.,Omega_m,sigma_gbh;
   double * w;
   /*GBH_pt_end*/ 
 
@@ -10044,7 +10182,6 @@ int perturbations_derivs(double tau,
           pseudo_p_ncdm = pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm]; /* pseudo-pressure (see CLASS IV paper) */
           w_ncdm = p_ncdm_bg/rho_ncdm_bg; /* equation of state parameter */
           ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */
-          lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg; /*ncdm_caio_fa*/ 
           rho_m += rho_ncdm_bg; //GBH_pt
 
           /* c_eff is (delta p / delta rho) in the gauge under
@@ -10071,17 +10208,20 @@ int perturbations_derivs(double tau,
           }
           /*ncdm_caio_fa*/
           if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
-            ceff2_ncdm = ca2_ncdm;
-            c2_asp_ncdm = (1. + w_ncdm) / (1. + lambda_ncdm) / 3.;
-            class_test(c2_asp_ncdm<0., ppt->error_message,
-                  "ncdm asymptotic sound speed squared is negative.");
-
-            
-            k_fs_ncdm = 2. * _PI_ * a_prime_over_a / sqrt(3.*c2_asp_ncdm);//sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp_ncdm);TEST!!!
-            k_horizon_ncdm = 2. * _PI_ / pvecback[pba->index_bg_horizon_gbh]; /* ***Pending*** */
-            ceff2_ncdm = ca2_ncdm + (c2_asp_ncdm - ca2_ncdm) * exp(-4. / 3. * k_fs_ncdm / k);
-            sigma_ncdm=1./k2 * (-2./5. * k_horizon_ncdm / k * exp(-k_horizon_ncdm / k) * ceff2_ncdm / (1. + w_ncdm) *k2*y[idx] + k/k_fs_ncdm*exp(-5.*k_fs_ncdm/k)*w_ncdm*w_ncdm*y[idx+1]);
-
+            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg; 
+            class_call(perturbations_shear_caio(ppt,
+                                                &ceff2_ncdm, //this will be overwritten inside the function
+                                                &sigma_ncdm, //this will be overwritten inside the function
+                                                w_ncdm,
+                                                lambda_ncdm,
+                                                ca2_ncdm,
+                                                pvecback[pba->index_bg_horizon_gbh], /* ***Pending*** */
+                                                y[idx],
+                                                y[idx+1],
+                                                a_prime_over_a,
+                                                k
+                                                ), 
+                       pba->error_message, ppt->error_message);
           }
 
           /** - -----> exact continuity equation */
@@ -10191,13 +10331,13 @@ int perturbations_derivs(double tau,
         
         if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {//fluid approximation eqs go here
         /** - -----> define intermediate quantitites */
+        rho_gbh = 3.*pvecback[pba->index_bg_P_gbh]; /* background density */
         p_gbh = pvecback[pba->index_bg_P_gbh+1];
         //fprintf(stdout, "\n lambda?? %e",p_gbh); fflush(stdout);
         pseudo_p_gbh = pvecback[pba->index_bg_P_gbh+2]; /* pseudo-pressure (see CLASS IV paper) */
-        w_gbh = p_gbh/pvecback[pba->index_bg_P_gbh]/3.; /* equation of state parameter */
+        w_gbh = p_gbh/rho_gbh; /* equation of state parameter */
         ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */
-        lambda_gbh = pvecback[pba->index_bg_P_min1_gbh] / pvecback[pba->index_bg_P_gbh] / 3.; /*w_{-1} of gbh species*/
-        rho_m += pvecback[pba->index_bg_P_gbh] * 3.; 
+        rho_m += rho_gbh; 
         Omega_m = pvecback[pba->index_bg_Omega_m];  // you can remove rho_m from this function if you're not using it in this line
 
         /* c_eff is (delta p / delta rho) in the gauge under
@@ -10224,17 +10364,21 @@ int perturbations_derivs(double tau,
           //fprintf(stdout, "\n ceff2_gbh? %e",ceff2_gbh); fflush(stdout);
         }
         if (ppr->gbh_fluid_approximation == gbh_fa_caio) {//TEST!!!
+          lambda_gbh = pvecback[pba->index_bg_P_min1_gbh] / rho_gbh; /*w_{-1} of gbh species*/
+          class_call(perturbations_shear_caio(ppt,        //just for keeping track of error messages
+                                              &ceff2_gbh, //this will be overwritten inside the function
+                                              &sigma_gbh, //this will be overwritten inside the function
+                                              w_gbh,
+                                              lambda_gbh,
+                                              ca2_gbh,
+                                              pvecback[pba->index_bg_horizon_gbh], 
+                                              y[pv->index_pt_delta_gbh],
+                                              y[pv->index_pt_theta_gbh],
+                                              a_prime_over_a,
+                                              k
+                                              ), 
+                       pba->error_message, ppt->error_message);
           
-          c2_asp = (1. + w_gbh) / (1. + lambda_gbh) / 3.;
-          class_test(c2_asp<0., ppt->error_message,
-                "GBH asymptotic sound speed squared is negative.");
-
-          
-          k_fs_gbh = 2. * _PI_ * a_prime_over_a / sqrt(3.*c2_asp);//sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp);TEST!!!
-          k_horizon_gbh = 2. * _PI_ / pvecback[pba->index_bg_horizon_gbh];
-          ceff2_gbh = ca2_gbh + (c2_asp - ca2_gbh) * exp(-4. / 3. * k_fs_gbh / k);
-          sigma_gbh=1./k2 * (-2./5. * k_horizon_gbh / k * exp(-k_horizon_gbh / k) * ceff2_gbh / (1. + w_gbh) *k2*y[pv->index_pt_delta_gbh] + k/k_fs_gbh*exp(-5.*k_fs_gbh/k)*w_gbh*w_gbh*y[pv->index_pt_theta_gbh]);
-
         }
 
         /** - -----> exact continuity equation */
