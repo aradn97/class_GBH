@@ -538,6 +538,8 @@ int background_functions(
       p_tot += p_ncdm;
       pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] = p_min1_ncdm; /*ncdm_caio_fa*/
       pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm] = pseudo_p_ncdm;
+
+      pvecback[pba->index_bg_horizon_ncdm1+n_ncdm] = pvecback_B[pba->index_bi_horizon_ncdm1+n_ncdm]; // neutrino horizon lambda_hor /*ncdm_caio_fa*/
       /** See e.g. Eq. A6 in 1811.00904. */
       dp_dloga += (pseudo_p_ncdm - 5*p_ncdm);
 
@@ -1196,6 +1198,7 @@ int background_indices(
   class_define_index(pba->index_bg_rho_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_pseudo_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
+  class_define_index(pba->index_bg_horizon_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_caio_fa*/
   /* - index for n GBH moments*/
   class_define_index(pba->index_bg_P_min1_gbh,pba->has_gbh,index_bg,1); //GBH_bg
   class_define_index(pba->index_bg_rho_gbh,pba->has_gbh,index_bg,1); //GBH_bg
@@ -1313,6 +1316,7 @@ int background_indices(
 
   /* -> index for conformal time in vector of variables to integrate */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
+  class_define_index(pba->index_bi_horizon_ncdm1,pba->has_ncdm,index_bi,pba->N_ncdm); /*ncdm_caio_fa*/
   /* -> energy density in gbh zeroth moment (energy density/3) */ 
   //class_define_index(pba->index_bi_P0_gbh,pba->has_gbh,index_bi,1); //GBH_bg
   /*GBH_pt_start*/
@@ -2865,6 +2869,12 @@ int background_initial_conditions(
       (good approximation for most purposes) */
   pvecback_integration[pba->index_bi_tau] = 1./(a * pvecback[pba->index_bg_H]);
 
+  if (pba->has_ncdm == _TRUE_) {
+    for (n_ncdm=0; n_ncdm<pba->N_ncdm; n_ncdm++) { 
+      pvecback_integration[pba->index_bi_horizon_ncdm1+n_ncdm] = pvecback_integration[pba->index_bi_tau]; 
+    }
+  }
+
   /*GBH_pt_start*/
   if (pba->has_gbh == _TRUE_) {
       pvecback_integration[pba->index_bi_app_horizon_gbh] = pvecback_integration[pba->index_bi_tau]; //equal to tau initially
@@ -3002,6 +3012,8 @@ int background_output_titles(
       class_store_columntitle(titles,tmp,_TRUE_);
       class_sprintf(tmp,"(.)p_ncdm[%d]",n);
       class_store_columntitle(titles,tmp,_TRUE_);
+      class_sprintf(tmp,"(.)horizon_ncdm[%d]",n); /*ncdm_caio_fa*/
+      class_store_columntitle(titles,tmp,_TRUE_);
     }
   }
   /*GBH_bg_start*/
@@ -3092,6 +3104,7 @@ int background_output_data(
       for (n=0; n<pba->N_ncdm; n++) {
         class_store_double(dataptr,pvecback[pba->index_bg_rho_ncdm1+n],_TRUE_,storeidx);
         class_store_double(dataptr,pvecback[pba->index_bg_p_ncdm1+n],_TRUE_,storeidx);
+        class_store_double(dataptr,pvecback[pba->index_bg_horizon_ncdm1+n],_TRUE_,storeidx); /*ncdm_caio_fa*/
       }
     }
     /*GBH_bg_start*/
@@ -3186,6 +3199,8 @@ int background_derivs(
   struct background * pba;
   double * pvecback, a, H, rho_M;
   double w_gbh,c_asp,lambda; //GBH_pt
+  int n_ncdm; /*ncdm_caio_fa*/
+  double rho_ncdm_bg,w_ncdm; /*ncdm_caio_fa*/
 
   pbpaw = parameters_and_workspace;
   pba =  pbpaw->pba;
@@ -3238,6 +3253,16 @@ int background_derivs(
   if ((pba->has_dcdm == _TRUE_) && (pba->has_dr == _TRUE_)) {
     /** - Compute dr density \f$ d\rho/dloga = -4\rho - \Gamma/H \rho \f$ */
     dy[pba->index_bi_rho_dr] = -4.*y[pba->index_bi_rho_dr]+pba->Gamma_dcdm/H*y[pba->index_bi_rho_dcdm];
+  }
+
+  if (pba->has_ncdm == _TRUE_){ /*ncdm_caio_fa*/
+    for (n_ncdm=0; n_ncdm<pba->N_ncdm; n_ncdm++) {
+      rho_ncdm_bg = pvecback[pba->index_bg_rho_ncdm1+n_ncdm];
+      w_ncdm = pvecback[pba->index_bg_p_ncdm1+n_ncdm] / rho_ncdm_bg;
+      lambda = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+      c_asp = sqrt(1./3. * (1. + w_ncdm)/(1. + lambda));
+      dy[pba->index_bi_horizon_ncdm1+n_ncdm] = sqrt(3.) * c_asp / (a * H);//2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); ///TEST!!!
+    }
   }
 
   /*GBH_bg_start*/

@@ -887,6 +887,19 @@ extern "C" {
                                        struct perturbations_workspace * ppw
                                        );
 
+  int perturbations_shear_caio(
+                               double * ceff2_out,
+                               double * sigma,
+                               double w,
+                               double lambda,
+                               double ca2,
+                               double horizon,
+                               double delta,
+                               double theta,
+                               double a_prime_over_a,
+                               double k
+                               );                                     
+
   int perturbations_approximations(
                                    struct precision * ppr,
                                    struct background * pba,

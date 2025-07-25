@@ -196,20 +196,23 @@ struct background
   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
   int index_bg_rho_scf;       /**< scalar field energy density */
   int index_bg_p_scf;         /**< scalar field pressure */
-  int index_bg_p_prime_scf;         /**< scalar field pressure */
+  int index_bg_p_prime_scf;   /**< scalar field pressure */
 
-  int index_bg_P_min1_ncdm1;   /**< P_{-1} of first ncdm species (others contiguous) */
+  int index_bg_P_min1_ncdm1;  /**< P_{-1} of first ncdm species (others contiguous) */
   int index_bg_rho_ncdm1;     /**< density of first ncdm species (others contiguous) */
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
   int index_bg_pseudo_p_ncdm1;/**< another statistical momentum useful in ncdma approximation */
+
+  /*ncdm_caio_fa*/
+  int index_bg_horizon_ncdm1; /**< horizon scale of first ncdm species (others contiguous) */
 
   int index_bg_P_min1_gbh;    /**< P_{-1} of species in GBH, from quadrature integration*/   //GBH_bg
   int index_bg_rho_gbh;       /**< density of species in GBH, from quadrature integration*/   //GBH_bg
   int index_bg_P_gbh;         /**< density of species in GBH, from table*/   //GBH_bg
   int index_bg_app_horizon_gbh;     /**< approximate comoving horizon distance of species in GBH*/   //GBH_pt
-  int index_bg_horizon_gbh;     /**< comoving horizon distance of species in GBH*/   //GBH_pt
+  int index_bg_horizon_gbh;   /**< comoving horizon distance of species in GBH*/   //GBH_pt
   int index_bg_lambda_gbh;    /**< w_{-1}=lambda in GBH*/   //GBH_pt
-  int index_bg_Pminus1_gbh;    /**< P_{-1} in GBH*/   //GBH_pt
+  int index_bg_Pminus1_gbh;   /**< P_{-1} in GBH*/   //GBH_pt
 
   int index_bg_rho_tot;       /**< Total density */
   int index_bg_p_tot;         /**< Total pressure */
@@ -289,10 +292,11 @@ struct background
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
+  int index_bi_horizon_ncdm1; /**< {C} horizon distance in Mpc for first ncdm species (others contiguous) */
   int index_bi_app_horizon_gbh;  /**< {C} approximate horizon distance in Mpc for gbh */
-  int index_bi_horizon_gbh;  /**< {C} horizon distance in Mpc for gbh */
+  int index_bi_horizon_gbh;   /**< {C} horizon distance in Mpc for gbh */
   int index_bi_lambda_gbh;    /**< {C} w_{-1}=lambda for gbh */
-  int index_bi_Pminus1_gbh;    /**< {C} P_{-1} for gbh */
+  int index_bi_Pminus1_gbh;   /**< {C} P_{-1} for gbh */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
   int index_bi_D_prime; /**< {C} D satisfies \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$ */
 
