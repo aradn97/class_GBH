@@ -3350,6 +3350,9 @@ int input_read_parameters_species(struct file_content * pfc,
   Omega_tot += pba->Omega0_idr;
   Omega_tot += pba->Omega0_ncdm_tot;
   Omega_tot += pba->Omega0_gbh;   //GBH_bg
+  /*The follwoing will be recalculated in background_solve after evolving the background.
+  However, we need Omega0_m in order to find the neutrino horizon; and for that we use the already known values of Omega0*/
+  pba->Omega0_m = pba->Omega0_b + pba->Omega0_cdm + pba->Omega0_idm + pba->Omega0_dcdmdr + pba->Omega0_ncdm_tot + pba->Omega0_gbh; /*ncdm_caio_fa*/
   /* Step 1 */
   if (flag1 == _TRUE_){
     pba->Omega0_lambda = param1;

@@ -888,6 +888,8 @@ extern "C" {
                                        );
 
   int perturbations_shear_caio(
+                               struct background * pba,
+                               struct perturbations * ppt,
                                double * ceff2_out,
                                double * sigma,
                                double w,
@@ -897,6 +899,7 @@ extern "C" {
                                double delta,
                                double theta,
                                double a_prime_over_a,
+                               double a,
                                double k
                                );                                     
 

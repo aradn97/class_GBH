@@ -6447,6 +6447,8 @@ int perturbations_initial_conditions(struct precision * ppr,
 /**
  * Evaluate the functional form of shear, given neutrino horizon size, overdensity and velocity, and background quantities.
  * This function is used whenever Caio's fluid approximation is demanded for either ncdm or GBH species.
+ * @param pba            Input: pointer to background structure
+ * @param ppt            Input: pointer to perturbations structure
  * @param ceff2          Input/Output: effective sound speed squared
  * @param sigma          Input/Output: shear
  * @param w              Input: equation of state parameter
@@ -6456,9 +6458,11 @@ int perturbations_initial_conditions(struct precision * ppr,
  * @param delta          Input: overdensity
  * @param theta          Input: velocity
  * @param a_prime_over_a Input: a'/a
+ * @param a              Input: scale factor
  * @param k              Input: wavenumber
 */
 int perturbations_shear_caio(
+                             struct background * pba,
                              struct perturbations * ppt,
                              double * ceff2_out,
                              double * sigma,
@@ -6469,15 +6473,17 @@ int perturbations_shear_caio(
                              double delta,
                              double theta,
                              double a_prime_over_a,
+                             double a,
                              double k
                              ) {
 
-  double k2 = k*k, k_fs, k_horizon;
+  double H = a_prime_over_a/a, k2 = k*k, k_fs, k_horizon;
   double c2_asp = (1. + w) / (1. + lambda) / 3., c_eff2;
+  double Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
   class_test(c2_asp<0., ppt->error_message,
         "ncdm asymptotic sound speed squared is negative.");
 
-  k_fs = 2. * _PI_ * a_prime_over_a / sqrt(3.*c2_asp);//sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp);TEST!!!
+  k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp); //2. * _PI_ * a_prime_over_a / sqrt(3.*c2_asp); //TEST!!!
   k_horizon = 2. * _PI_ / horizon; 
   
   c_eff2 = ca2 + (c2_asp - ca2) * exp(-4. / 3. * k_fs / k);
@@ -7531,7 +7537,8 @@ int perturbations_total_stress_energy(
             else{/*ncdm_caio_fa*/
               lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
               ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
-              class_call(perturbations_shear_caio(ppt,
+              class_call(perturbations_shear_caio(pba,
+                                                  ppt,
                                                   NULL, 
                                                   &sigma_ncdm, //this will be overwritten inside the function
                                                   w_ncdm,
@@ -7541,6 +7548,7 @@ int perturbations_total_stress_energy(
                                                   y[idx],
                                                   y[idx+1],
                                                   a_prime_over_a,
+                                                  a,
                                                   k
                                                   ), 
                          pba->error_message, ppt->error_message);
@@ -7555,7 +7563,8 @@ int perturbations_total_stress_energy(
           else{ /*ncdm_caio_fa*/
             lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
             ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
-            class_call(perturbations_shear_caio(ppt,
+            class_call(perturbations_shear_caio(pba,
+                                                ppt,
                                                 NULL, 
                                                 &sigma_ncdm, //this will be overwritten inside the function
                                                 w_ncdm,
@@ -7565,6 +7574,7 @@ int perturbations_total_stress_energy(
                                                 y[idx],
                                                 y[idx+1],
                                                 a_prime_over_a,
+                                                a,
                                                 k
                                                 ), 
                         pba->error_message, ppt->error_message);
@@ -7655,7 +7665,8 @@ int perturbations_total_stress_energy(
         else{
           lambda_gbh = ppw->pvecback[pba->index_bg_P_min1_gbh] / rho_gbh;
           ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */ 
-          class_call(perturbations_shear_caio(ppt,
+          class_call(perturbations_shear_caio(pba,
+                                              ppt,
                                               NULL, 
                                               &sigma_gbh, //this will be overwritten inside the function
                                               w_gbh,
@@ -7665,6 +7676,7 @@ int perturbations_total_stress_energy(
                                               delta_gbh,
                                               theta_gbh,
                                               a_prime_over_a,
+                                              a,
                                               k
                                               ), 
                       pba->error_message, ppt->error_message);
@@ -8938,7 +8950,8 @@ int perturbations_print_variables(double tau,
           else{ /*ncdm_caio_fa*/
             lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
             ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
-            class_call(perturbations_shear_caio(ppt,
+            class_call(perturbations_shear_caio(pba,
+                                                ppt,
                                                 NULL, 
                                                 &shear_ncdm[n_ncdm], //this will be overwritten inside the function
                                                 w_ncdm,
@@ -8948,6 +8961,7 @@ int perturbations_print_variables(double tau,
                                                 delta_ncdm[n_ncdm],
                                                 theta_ncdm[n_ncdm],
                                                 a * H,
+                                                a,
                                                 k
                                                 ), 
                          pba->error_message, ppt->error_message);
@@ -9011,7 +9025,8 @@ int perturbations_print_variables(double tau,
              lambda_gbh = ppw->pvecback[pba->index_bg_P_min1_gbh] / rho_gbh;
              pseudo_p_gbh = ppw->pvecback[pba->index_bg_P_gbh+2]; /* pseudo-pressure (see CLASS IV paper) */
              ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */
-             class_call(perturbations_shear_caio(ppt,
+             class_call(perturbations_shear_caio(pba,
+                                                 ppt,
                                                  NULL, 
                                                  &sigma_gbh, //this will be overwritten inside the function
                                                  w_gbh,
@@ -9021,6 +9036,7 @@ int perturbations_print_variables(double tau,
                                                  delta_gbh,
                                                  theta_gbh,
                                                  a * H,
+                                                 a,
                                                  k
                                                  ), 
                          pba->error_message, ppt->error_message);
@@ -10209,7 +10225,8 @@ int perturbations_derivs(double tau,
           /*ncdm_caio_fa*/
           if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
             lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg; 
-            class_call(perturbations_shear_caio(ppt,
+            class_call(perturbations_shear_caio(pba,
+                                                ppt,
                                                 &ceff2_ncdm, //this will be overwritten inside the function
                                                 &sigma_ncdm, //this will be overwritten inside the function
                                                 w_ncdm,
@@ -10219,6 +10236,7 @@ int perturbations_derivs(double tau,
                                                 y[idx],
                                                 y[idx+1],
                                                 a_prime_over_a,
+                                                a,
                                                 k
                                                 ), 
                        pba->error_message, ppt->error_message);
@@ -10365,7 +10383,8 @@ int perturbations_derivs(double tau,
         }
         if (ppr->gbh_fluid_approximation == gbh_fa_caio) {//TEST!!!
           lambda_gbh = pvecback[pba->index_bg_P_min1_gbh] / rho_gbh; /*w_{-1} of gbh species*/
-          class_call(perturbations_shear_caio(ppt,        //just for keeping track of error messages
+          class_call(perturbations_shear_caio(pba,
+                                              ppt,        //just for keeping track of error messages
                                               &ceff2_gbh, //this will be overwritten inside the function
                                               &sigma_gbh, //this will be overwritten inside the function
                                               w_gbh,
@@ -10375,6 +10394,7 @@ int perturbations_derivs(double tau,
                                               y[pv->index_pt_delta_gbh],
                                               y[pv->index_pt_theta_gbh],
                                               a_prime_over_a,
+                                              a,
                                               k
                                               ), 
                        pba->error_message, ppt->error_message);

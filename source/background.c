@@ -3200,7 +3200,7 @@ int background_derivs(
   double * pvecback, a, H, rho_M;
   double w_gbh,c_asp,lambda; //GBH_pt
   int n_ncdm; /*ncdm_caio_fa*/
-  double rho_ncdm_bg,w_ncdm; /*ncdm_caio_fa*/
+  double rho_ncdm_bg,w_ncdm,Omega_m; /*ncdm_caio_fa*/
 
   pbpaw = parameters_and_workspace;
   pba =  pbpaw->pba;
@@ -3261,7 +3261,8 @@ int background_derivs(
       w_ncdm = pvecback[pba->index_bg_p_ncdm1+n_ncdm] / rho_ncdm_bg;
       lambda = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
       c_asp = sqrt(1./3. * (1. + w_ncdm)/(1. + lambda));
-      dy[pba->index_bi_horizon_ncdm1+n_ncdm] = sqrt(3.) * c_asp / (a * H);//2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); ///TEST!!!
+      Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
+      dy[pba->index_bi_horizon_ncdm1+n_ncdm] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * Omega_m));//sqrt(3.) * c_asp / (a * H);//TEST!!!
     }
   }
 
@@ -3275,8 +3276,9 @@ int background_derivs(
     w_gbh = pvecback[pba->index_bg_P_gbh + 1] / pvecback[pba->index_bg_P_gbh] / 3.;
     lambda = pvecback[pba->index_bg_P_min1_gbh] / pvecback[pba->index_bg_P_gbh] / 3.;
     c_asp = sqrt(1./3. * (1. + w_gbh)/(1. + lambda));
+    Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
     dy[pba->index_bi_app_horizon_gbh] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh * a / 3., 2.)));
-    dy[pba->index_bi_horizon_gbh] = sqrt(3.) * c_asp / (a * H);//2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); ///TEST!!!
+    dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * Omega_m));//sqrt(3.) * c_asp / (a * H); ///TEST!!!
     dy[pba->index_bi_lambda_gbh] = -(1. + y[pba->index_bi_lambda_gbh]) + 3. * y[pba->index_bi_lambda_gbh] * (1. + w_gbh);
     dy[pba->index_bi_Pminus1_gbh] = -y[pba->index_bi_Pminus1_gbh] - 3. * pvecback[pba->index_bg_P_gbh];
   }
