@@ -3332,6 +3332,7 @@ int perturbations_prepare_k_output(struct background * pba,
       class_store_columntitle(ppt->scalar_titles,"theta_b",_TRUE_);
       class_store_columntitle(ppt->scalar_titles,"psi",_TRUE_);
       class_store_columntitle(ppt->scalar_titles,"phi",_TRUE_);
+      class_store_columntitle(ppt->scalar_titles,"phi_prime",_TRUE_); //GBH_pt_print
       /* Perturbed recombination */
       class_store_columntitle(ppt->scalar_titles,"delta_Tb",ppt->has_perturbed_recombination);
       class_store_columntitle(ppt->scalar_titles,"delta_chi",ppt->has_perturbed_recombination);
@@ -5710,7 +5711,10 @@ int perturbations_initial_conditions(struct precision * ppr,
   double delta_dr=0;
   double q,epsilon,k2;
   int index_q,n_ncdm,idx;
-  int n,ll; //GBH_pt
+  /*GBH_pt_start*/
+  int n,ll; 
+  double l_factorial = 1.,ll_1_double_factorial = 1.;//l_factorial =l!, ll_1_double_factorial = (2l-1)!!
+  /*GBH_pt_end*/
   double rho_r,rho_m,rho_nu,rho_m_over_rho_r, rho_cdm =0.;
   double fracnu,fracg,fracb,fraccdm = 0.,fracidm = 0.;
   double om;
@@ -6269,18 +6273,86 @@ int perturbations_initial_conditions(struct precision * ppr,
             ppw->pv->y[ppw->pv->index_pt_sigma_gbh] = shear_ur;
         }
         else{
-          ppw->pv->y[ppw->pv->index_pt_Delta_gbh] = delta_ur / 3.; /* gbh density */
-          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh] = theta_ur / k;
-          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+1] = shear_ur;
-          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+2] = l3_ur; //if you change this at some point, remember to change the for loop on ll in the next few lines
-          for(n=1;n<ppw->pv->n_max_gbh;n++)
+          //TEST!!!
+                    double rho_delta_ncdm = 0.0,q,q2,epsilon,a2=a*a;
+                    double rho_plus_p_theta_ncdm = 0.0;
+                    double rho_plus_p_shear_ncdm = 0.0,rho_plus_p_shear3_ncdm=0.0;
+                    double delta_p_ncdm = 0.0;
+                    double factor = pba->factor_ncdm[0]/pow(a,4);
+                    int idx = ppw->pv->index_pt_psi0_ncdm1;
+
+                    for (int index_q=0; index_q < ppw->pv->q_size_ncdm[0]; index_q ++) {
+
+                      q = pba->q_ncdm[0][index_q];
+                      q2 = q*q;
+                      epsilon = sqrt(q2+pba->M_ncdm[0]*pba->M_ncdm[0]*a2);
+
+                      rho_delta_ncdm += q2*epsilon*pba->w_ncdm[0][index_q]*ppw->pv->y[idx];
+                      rho_plus_p_theta_ncdm += q2*q*pba->w_ncdm[0][index_q]*ppw->pv->y[idx+1];
+                      rho_plus_p_shear_ncdm += q2*q2/epsilon*pba->w_ncdm[0][index_q]*ppw->pv->y[idx+2];
+                      rho_plus_p_shear3_ncdm += q2*epsilon*pow(q/epsilon,3)*pba->w_ncdm[0][index_q]*ppw->pv->y[idx+3];
+                      delta_p_ncdm += q2*q2/epsilon*pba->w_ncdm[0][index_q]*ppw->pv->y[idx];
+
+                      //Jump to next momentum bin:
+                      idx+=(ppw->pv->l_max_ncdm[0]+1);
+                    }
+
+                    rho_delta_ncdm *= factor;
+                    rho_plus_p_theta_ncdm *= k*factor;
+                    rho_plus_p_shear_ncdm *= 2.0/3.0*factor;
+                    rho_plus_p_shear3_ncdm *= 2.0/5.0*factor;
+                    delta_p_ncdm *= factor/3.;
+
+                    double delta_ncdm = rho_delta_ncdm/ppw->pvecback[pba->index_bg_rho_ncdm1];
+                    double theta_ncdm = rho_plus_p_theta_ncdm/
+                      (ppw->pvecback[pba->index_bg_rho_ncdm1]+ppw->pvecback[pba->index_bg_p_ncdm1]);
+                    double shear_ncdm = rho_plus_p_shear_ncdm/
+                      (ppw->pvecback[pba->index_bg_rho_ncdm1]+ppw->pvecback[pba->index_bg_p_ncdm1]);
+                    double l3_ncdm = rho_plus_p_shear3_ncdm/
+                      (ppw->pvecback[pba->index_bg_rho_ncdm1]+ppw->pvecback[pba->index_bg_p_ncdm1]);
+          ppw->pv->y[ppw->pv->index_pt_Delta_gbh] = delta_ncdm/3.;//TEST!!! delta_ur / 3.; /* gbh density */
+          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh] = theta_ncdm/k;//TEST!!! theta_ur / k;
+          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+1] = shear_ncdm;//TEST!!! shear_ur;
+          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+2] = l3_ncdm;//TEST!!! l3_ur; //if you change this at some point, remember to change the for loop on ll in the next few lines
+          for(n=0;n<ppw->pv->n_max_gbh;n++)
           {
-            ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] =
-              ppw->pv->y[ppw->pv->index_pt_Delta_gbh];
-            for(ll=1;ll<4;ll++)
+            //TEST!!!
+                    rho_delta_ncdm = 0.0;
+                    idx = ppw->pv->index_pt_psi0_ncdm1;
+                    for (int index_q=0; index_q < ppw->pv->q_size_ncdm[0]; index_q ++) {
+                      q = pba->q_ncdm[0][index_q];
+                      q2 = q*q;
+                      epsilon = sqrt(q2+pba->M_ncdm[0]*pba->M_ncdm[0]*a2);
+                      rho_delta_ncdm += q2*epsilon*pow(q/epsilon,2*n)*pba->w_ncdm[0][index_q]*ppw->pv->y[idx];
+                      //Jump to next momentum bin:
+                      idx+=(ppw->pv->l_max_ncdm[0]+1);
+                    }
+                    rho_delta_ncdm *= factor/3.;
+            ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] = rho_delta_ncdm/ppw->pvecback[pba->index_bg_rho_ncdm1];
+              //TEST!!! ppw->pv->y[ppw->pv->index_pt_Delta_gbh];
+            
+            
+            for(ll=1;ll<4;ll++)//if you see large initial inaccuracy in shear, try setting the loop to ll<ppw->pv->l_max_gbh+1
             {
-              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh+ll-1] =
-                ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+ll-1];
+              //TEST!!!
+                            l_factorial *= 1.*ll;
+                            ll_1_double_factorial *= (2.*ll-1.);
+                            rho_plus_p_shear_ncdm = 0.0;
+                            idx = ppw->pv->index_pt_psi0_ncdm1;
+                            for (int index_q=0; index_q < ppw->pv->q_size_ncdm[0]; index_q ++) {
+
+                              q = pba->q_ncdm[0][index_q];
+                              q2 = q*q;
+                              epsilon = sqrt(q2+pba->M_ncdm[0]*pba->M_ncdm[0]*a2);
+
+                              rho_plus_p_shear_ncdm += q2*epsilon*pow(q/epsilon,2*n+ll)*pba->w_ncdm[0][index_q]*ppw->pv->y[idx+ll];
+
+                              //Jump to next momentum bin:
+                              idx+=(ppw->pv->l_max_ncdm[0]+1);
+                            }
+                            rho_plus_p_shear_ncdm *= l_factorial/ll_1_double_factorial*factor;
+              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh+ll-1] = rho_plus_p_shear_ncdm/(ppw->pvecback[pba->index_bg_rho_ncdm1]+ppw->pvecback[pba->index_bg_p_ncdm1]);
+                //TEST!!!ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+ll-1];
               }
             }
         }
@@ -8745,7 +8817,7 @@ int perturbations_print_variables(double tau,
   /** - ncdm sector ends */
   double delta_gbh, delta1_gbh, theta_gbh, theta1_gbh, sigma_gbh, sigma1_gbh; //GBH_pt
   double rho_gbh, p_gbh, pseudo_p_gbh, w_gbh, lambda_gbh, ca2_gbh; //GBH_pt
-  double phi=0.,psi=0.,alpha=0.;
+  double phi=0.,psi=0.,phi_prime=0.,alpha=0.; //GBH_pt_print
   double delta_temp=0., delta_chi=0.;
 
   double a,a2,H;
@@ -8922,14 +8994,17 @@ int perturbations_print_variables(double tau,
 
       psi = pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a] * alpha + pvecmetric[ppw->index_mt_alpha_prime];
       phi = y[ppw->pv->index_pt_eta] - pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
+      phi_prime = 0.; //GBH_pt_print
     }
     else if (ppt->gauge == newtonian){
       psi = pvecmetric[ppw->index_mt_psi];
       phi = y[ppw->pv->index_pt_phi];
+      phi_prime = pvecmetric[ppw->index_mt_phi_prime];//GBH_pt_print
     }
     else{
       psi = 0.0;
       phi = 0.0;
+      phi_prime = 0.0; //GBH_pt_print
     }
 
     if (pba->has_ncdm == _TRUE_) {
@@ -9183,6 +9258,7 @@ int perturbations_print_variables(double tau,
     class_store_double(dataptr, theta_b, _TRUE_, storeidx);
     class_store_double(dataptr, psi, _TRUE_, storeidx);
     class_store_double(dataptr, phi, _TRUE_, storeidx);
+    class_store_double(dataptr, phi_prime, _TRUE_, storeidx); //GBH_pt_print
     /* perturbed recombination */
     class_store_double(dataptr, delta_temp, ppt->has_perturbed_recombination, storeidx);
     class_store_double(dataptr, delta_chi, ppt->has_perturbed_recombination, storeidx);
@@ -9458,7 +9534,7 @@ int perturbations_derivs(double tau,
   /* for GBH species*/
   /*GBH_pt_start*/ 
   double w_gbh,rho_gbh,p_gbh,pseudo_p_gbh,ca2_gbh,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; 
-  double lambda_gbh,rho_m=0.,Omega_m,sigma_gbh;
+  double lambda_gbh,sigma_gbh;
   double * w;
   /*GBH_pt_end*/ 
 
@@ -9694,7 +9770,6 @@ int perturbations_derivs(double tau,
 
     /* start with idm as it might be needed during (normal) tca  */
     if (pba->has_idm == _TRUE_){
-      rho_m += pvecback[pba->index_bg_rho_idm]; //GBH_pt
 
       dy[pv->index_pt_delta_idm] = -(theta_idm+metric_continuity); /* idm density */
       dy[pv->index_pt_theta_idm] =
@@ -9751,7 +9826,6 @@ int perturbations_derivs(double tau,
     }
 
     /** - ---> baryon density */
-    rho_m += pvecback[pba->index_bg_rho_b]; //GBH_pt
 
     dy[pv->index_pt_delta_b] = -(theta_b+metric_continuity);
 
@@ -9903,7 +9977,7 @@ int perturbations_derivs(double tau,
     /** - ---> cdm */
 
     if (pba->has_cdm == _TRUE_) {
-      rho_m += pvecback[pba->index_bg_rho_cdm]; //GBH_pt
+      
 
       /** - ----> newtonian gauge: cdm density and velocity */
 
@@ -9990,7 +10064,7 @@ int perturbations_derivs(double tau,
     /** - ---> dcdm and dr */
 
     if (pba->has_dcdm == _TRUE_) {
-      rho_m += pvecback[pba->index_bg_rho_dcdm]; //GBH_pt
+      
 
       /** - ----> dcdm */
 
@@ -10095,7 +10169,7 @@ int perturbations_derivs(double tau,
     /** - ---> ultra-relativistic neutrino/relics (ur) */
 
     if (pba->has_ur == _TRUE_) {
-      rho_m += pvecback[pba->index_bg_rho_ur]; //GBH_pt
+      
 
       /** - ----> if radiation streaming approximation is off */
 
@@ -10198,7 +10272,7 @@ int perturbations_derivs(double tau,
           pseudo_p_ncdm = pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm]; /* pseudo-pressure (see CLASS IV paper) */
           w_ncdm = p_ncdm_bg/rho_ncdm_bg; /* equation of state parameter */
           ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */
-          rho_m += rho_ncdm_bg; //GBH_pt
+          
 
           /* c_eff is (delta p / delta rho) in the gauge under
              consideration (not in the gauge comoving with the
@@ -10355,8 +10429,7 @@ int perturbations_derivs(double tau,
         pseudo_p_gbh = pvecback[pba->index_bg_P_gbh+2]; /* pseudo-pressure (see CLASS IV paper) */
         w_gbh = p_gbh/rho_gbh; /* equation of state parameter */
         ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */
-        rho_m += rho_gbh; 
-        Omega_m = pvecback[pba->index_bg_Omega_m];  // you can remove rho_m from this function if you're not using it in this line
+        
 
         /* c_eff is (delta p / delta rho) in the gauge under
             consideration (not in the gauge comoving with the
