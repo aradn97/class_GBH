@@ -390,10 +390,8 @@ int background_functions(
   double rho_r;
   /* total non-relativistic density */
   double rho_m;
-  /* total matter+neutrino density */
-  double rho_M; //GBH_bg
   /* background gbh quantities */
-  double rho_gbh,P_min1; //GBH_bg
+  double rho_gbh,p_gbh,P_min1; //GBH_bg
   /* background ncdm quantities */
   double rho_ncdm,p_ncdm,pseudo_p_ncdm,p_min1_ncdm; /*ncdm_caio_fa*/
   /* index for n_ncdm species */
@@ -422,7 +420,6 @@ int background_functions(
   dp_dloga = 0.;
   rho_r=0.;
   rho_m=0.;
-  rho_M=0.; //GBH_bg
 
   class_test(a <= 0.,
              pba->error_message,
@@ -445,7 +442,6 @@ int background_functions(
   rho_tot += pvecback[pba->index_bg_rho_b];
   p_tot += 0;
   rho_m += pvecback[pba->index_bg_rho_b];
-  rho_M += pvecback[pba->index_bg_rho_b]; //GBH_bg
 
   /* cdm */
   if (pba->has_cdm == _TRUE_) {
@@ -453,7 +449,6 @@ int background_functions(
     rho_tot += pvecback[pba->index_bg_rho_cdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_cdm];
-    rho_M += pvecback[pba->index_bg_rho_cdm]; //GBH_bg
   }
 
   /* idm */
@@ -462,7 +457,6 @@ int background_functions(
     rho_tot += pvecback[pba->index_bg_rho_idm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_idm];
-    rho_M += pvecback[pba->index_bg_rho_idm]; //GBH_bg
   }
 
   /* dcdm */
@@ -472,7 +466,6 @@ int background_functions(
     rho_tot += pvecback[pba->index_bg_rho_dcdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_dcdm];
-    rho_M += pvecback[pba->index_bg_rho_dcdm]; //GBH_bg
   }
 
   /* dr */
@@ -502,7 +495,6 @@ int background_functions(
     //divide relativistic & nonrelativistic (not very meaningful for oscillatory models)
     rho_r += 3.*pvecback[pba->index_bg_p_scf]; //field pressure contributes radiation
     rho_m += pvecback[pba->index_bg_rho_scf] - 3.* pvecback[pba->index_bg_p_scf]; //the rest contributes matter
-    rho_M += pvecback[pba->index_bg_rho_scf] - 3.* pvecback[pba->index_bg_p_scf]; 
     //printf(" a= %e, Omega_scf = %f, \n ",a, pvecback[pba->index_bg_rho_scf]/rho_tot );
   }
 
@@ -549,7 +541,6 @@ int background_functions(
       /* (rho_ncdm1 - 3 p_ncdm1) is the "non-relativistic" contribution
          to rho_ncdm1 */
       rho_m += rho_ncdm - 3.* p_ncdm;
-      rho_M += rho_ncdm; //GBH_bg
     }
   }
 
@@ -588,7 +579,7 @@ int background_functions(
                                         1./a-1.,
                                         NULL,
                                         &rho_gbh,
-                                        NULL,
+                                        &p_gbh, //TEST!!! used to be NULL
                                         &P_min1),
                 pba->error_message,
                 pba->error_message);
@@ -597,7 +588,7 @@ int background_functions(
     //if(a>=1.)//test
     //  printf("\nInterpolated rho= %e, a= %e, x= %e, pba->rho_gbh_bg[pba->x_size_gbh_bg-1]= %e, pba->x_gbh_bg[pba->x_size_gbh_bg-1]=%e\n",interpolated_rho,a,current_x_value, pba->rho_gbh_bg[pba->x_size_gbh_bg-1],pba->x_gbh_bg[pba->x_size_gbh_bg-1]);
     interpolated_rho = interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
-    pvecback[pba->index_bg_P_gbh] = interpolated_rho / 3.;
+    pvecback[pba->index_bg_P_gbh] = rho_gbh/3.;//TEST!!! interpolated_rho / 3.;
     //pvecback[pba->index_bg_P_gbh] = pvecback_B[pba->index_bi_P0_gbh];
     class_alloc(interpolated_w_n, sizeof(double) * (pba->n_max_gbh+1), pba->error_message);
     // Interpolate `w_n` for GBH from the saved array of pre-computed values
@@ -626,6 +617,7 @@ int background_functions(
     {
       pvecback[pba->index_bg_P_gbh + n_gbh] = 3.*pvecback[pba->index_bg_P_gbh] * interpolated_w_n[n_gbh];
     }
+    pvecback[pba->index_bg_P_gbh + 1] = p_gbh; //TEST!!! remove this after testing
     rho_tot += 3.*pvecback[pba->index_bg_P_gbh];
     p_tot +=  pvecback[pba->index_bg_P_gbh+1];
     
@@ -635,7 +627,6 @@ int background_functions(
       /* (rho_gbh - 3 p_gbh) is the "non-relativistic" contribution
          to energy density */
     rho_m += 3.*pvecback[pba->index_bg_P_gbh] - 3.* pvecback[pba->index_bg_P_gbh+1];
-    rho_M += 3.*pvecback[pba->index_bg_P_gbh];
 
     // Free the dynamically allocated memory for interpolated_w_n
     free(interpolated_w_n);
@@ -683,7 +674,6 @@ int background_functions(
     p_tot += (1./3.) * pvecback[pba->index_bg_rho_ur];
     dp_dloga += -(4./3.) * pvecback[pba->index_bg_rho_ur];
     rho_r += pvecback[pba->index_bg_rho_ur];
-    rho_M += pvecback[pba->index_bg_rho_ur]; //GBH_bg
   }
 
   /* interacting dark radiation */
@@ -735,9 +725,6 @@ int background_functions(
 
     /** - compute Omega_m */
     pvecback[pba->index_bg_Omega_m] = rho_m / rho_crit;
-
-    /** - compute Omega_M */
-    pvecback[pba->index_bg_Omega_M] = rho_M / rho_crit;
 
     /** - cosmological time */
     pvecback[pba->index_bg_time] = pvecback_B[pba->index_bi_time];
@@ -1271,9 +1258,6 @@ int background_indices(
 
   /* - index for Omega_m (non-relativistic density fraction) */
   class_define_index(pba->index_bg_Omega_m,_TRUE_,index_bg,1);
-
-  /* - index for Omega_m, including neutrinos */
-  class_define_index(pba->index_bg_Omega_M,_TRUE_,index_bg,1);
 
   /* -> conformal distance */
   class_define_index(pba->index_bg_conf_distance,_TRUE_,index_bg,1);
@@ -3012,6 +2996,8 @@ int background_output_titles(
       class_store_columntitle(titles,tmp,_TRUE_);
       class_sprintf(tmp,"(.)p_ncdm[%d]",n);
       class_store_columntitle(titles,tmp,_TRUE_);
+      class_sprintf(tmp,"(.)pseudo_p_ncdm[%d]",n); //GBH_pt_print
+      class_store_columntitle(titles,tmp,_TRUE_);
       class_sprintf(tmp,"(.)horizon_ncdm[%d]",n); /*ncdm_caio_fa*/
       class_store_columntitle(titles,tmp,_TRUE_);
     }
@@ -3104,6 +3090,7 @@ int background_output_data(
       for (n=0; n<pba->N_ncdm; n++) {
         class_store_double(dataptr,pvecback[pba->index_bg_rho_ncdm1+n],_TRUE_,storeidx);
         class_store_double(dataptr,pvecback[pba->index_bg_p_ncdm1+n],_TRUE_,storeidx);
+        class_store_double(dataptr,pvecback[pba->index_bg_pseudo_p_ncdm1+n],_TRUE_,storeidx); //GBH_pt_print
         class_store_double(dataptr,pvecback[pba->index_bg_horizon_ncdm1+n],_TRUE_,storeidx); /*ncdm_caio_fa*/
       }
     }

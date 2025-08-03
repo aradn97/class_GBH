@@ -224,7 +224,6 @@ struct background
 
   int index_bg_rho_crit;      /**< critical density */
   int index_bg_Omega_m;       /**< non-relativistic density fraction (\f$ \Omega_b + \Omega_cdm + \Omega_{\nu nr} \f$) */
-  int index_bg_Omega_M;       /**< matter and neutrino density fraction (\f$ \Omega_b + \Omega_cdm + \Omega_{\nu} \f$) */ //GBH_bg
   int index_bg_conf_distance; /**< conformal distance (from us) in Mpc */
   int index_bg_ang_distance;  /**< angular diameter distance in Mpc */
   int index_bg_lum_distance;  /**< luminosity distance in Mpc */
