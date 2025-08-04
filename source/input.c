@@ -2807,7 +2807,7 @@ int input_read_parameters_species(struct file_content * pfc,
     if (pba->gbh_use_table == 1){
       // Interpolate `rho` for GBH from the saved array of pre-computed values, for x=ma0/T0
       pba->last_index_gbh = 0;
-      if(pba->M_gbh<=100.)
+      if(pba->M_gbh<=1000.)
       {
         class_call(array_interpolate_spline(
                                             pba->x_gbh_bg,
