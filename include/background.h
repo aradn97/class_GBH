@@ -375,11 +375,14 @@ struct background
   //@{
 
   int gbh_quadrature_strategy; /**< Vector of integers according to quadrature strategy. */
-  double * q_gbh_bg;  /**< Pointers to vectors of background sampling in q */
-  double * weights_gbh_bg;  /**< Pointers to vectors of corresponding quadrature weights w */
-  double * dlnf0_dlnq_gbh; /**< Pointers to vectors of logarithmic derivatives of p-s-d */
-  int q_size_gbh_bg; /**< Size of the q_gbh_bg arrays */
-  double factor_gbh; /**< List of normalization factors for calculating energy density etc.*/
+  double * q_gbh_bg;           /**< Pointers to vectors of background sampling in q */
+  double * weights_gbh_bg;     /**< Pointers to vectors of corresponding quadrature weights w */
+  double * dlnf0_dlnq_gbh;     /**< Pointers to vectors of logarithmic derivatives of p-s-d */
+  double * q_gbh;              /**< Pointers to vectors of perturbation sampling in q */
+  double * weights_gbh;        /**< Pointers to vectors of corresponding quadrature weights w */
+  int q_size_gbh_bg;           /**< Size of the q_gbh_bg array */
+  int q_size_gbh;              /**< Size of the q_gbh array */
+  double factor_gbh;           /**< normalization factor for calculating energy density etc.*/
 
   //@}
   /*GBH_bg_end*/

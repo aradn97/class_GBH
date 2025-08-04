@@ -1059,6 +1059,9 @@ int background_free_input(
   free(pba->weights_gbh_bg);
   free(pba->dlnf0_dlnq_gbh);
 
+  free(pba->q_gbh); //GBH_pt
+  free(pba->weights_gbh); //GBH_pt
+
   free(pba->x_gbh_bg);
   free(pba->w_gbh_bg);
   free(pba->d2w_gbh_bg);
@@ -1891,6 +1894,29 @@ int background_gbh_init(
   pbadist.d2f0       = NULL;
   pbadist.last_index = 0;
   
+  class_alloc(pba->q_gbh,_QUADRATURE_MAX_*sizeof(double),pba->error_message);
+  class_alloc(pba->weights_gbh,_QUADRATURE_MAX_*sizeof(double),pba->error_message);
+  class_call(get_qsampling(pba->q_gbh,
+                               pba->weights_gbh,
+                               &(pba->q_size_gbh),
+                               _QUADRATURE_MAX_,
+                               ppr->tol_ncdm, // use same tolerance as ncdm
+                               pbadist.q,
+                               pbadist.tablesize,
+                               background_ncdm_test_function, // also the test function is the same as ncdm
+                               background_gbh_distribution,
+                               &pbadist,
+                               pba->error_message),
+                 pba->error_message,
+                 pba->error_message);
+  class_realloc(pba->q_gbh,pba->q_size_gbh*sizeof(double), pba->error_message);
+  class_realloc(pba->weights_gbh,pba->q_size_gbh*sizeof(double), pba->error_message);
+
+  if (pba->background_verbose > 0) {
+    printf("GBH species sampled with %d points (for perturbations integration)\n", pba->q_size_gbh);
+  }
+  
+  
   class_alloc(pba->q_gbh_bg,_QUADRATURE_MAX_BG_*sizeof(double),pba->error_message);
   class_alloc(pba->weights_gbh_bg,_QUADRATURE_MAX_BG_*sizeof(double),pba->error_message);
   class_call(get_qsampling(pba->q_gbh_bg,
@@ -1911,15 +1937,15 @@ int background_gbh_init(
   class_realloc(pba->weights_gbh_bg,pba->q_size_gbh_bg*sizeof(double), pba->error_message);
 
   if (pba->background_verbose > 0) {
-    printf("GBH species sampled with %d points (background)\n", pba->q_size_gbh_bg);
+    printf("GBH species sampled with %d points (for background integration)\n", pba->q_size_gbh_bg);
   }
 
   class_alloc(pba->dlnf0_dlnq_gbh,
-              pba->q_size_gbh_bg*sizeof(double),
+              pba->q_size_gbh*sizeof(double),
               pba->error_message);
 
-  for (index_q=0; index_q<pba->q_size_gbh_bg; index_q++) {
-    q = pba->q_gbh_bg[index_q];
+  for (index_q=0; index_q<pba->q_size_gbh; index_q++) {
+    q = pba->q_gbh[index_q];
     class_call(background_gbh_distribution(&pbadist,q,&f0),
                 pba->error_message,pba->error_message);
 
@@ -1927,13 +1953,13 @@ int background_gbh_init(
     for (tolexp=_PSD_DERIVATIVE_EXP_MIN_; tolexp<_PSD_DERIVATIVE_EXP_MAX_; tolexp++) {
 
       if (index_q == 0) {
-        dq = MIN((0.5-ppr->smallest_allowed_variation)*q,2*exp(tolexp)*(pba->q_gbh_bg[index_q+1]-q));
+        dq = MIN((0.5-ppr->smallest_allowed_variation)*q,2*exp(tolexp)*(pba->q_gbh[index_q+1]-q));
       }
-      else if (index_q == pba->q_size_gbh_bg-1) {
-        dq = exp(tolexp)*2.0*(pba->q_gbh_bg[index_q]-pba->q_gbh_bg[index_q-1]);
+      else if (index_q == pba->q_size_gbh-1) {
+        dq = exp(tolexp)*2.0*(pba->q_gbh[index_q]-pba->q_gbh[index_q-1]);
       }
       else{
-        dq = exp(tolexp)*(pba->q_gbh_bg[index_q+1]-pba->q_gbh_bg[index_q-1]);
+        dq = exp(tolexp)*(pba->q_gbh[index_q+1]-pba->q_gbh[index_q-1]);
       }
 
       class_call(background_gbh_distribution(&pbadist,q-2*dq,&f0m2),
@@ -3249,7 +3275,7 @@ int background_derivs(
       lambda = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
       c_asp = sqrt(1./3. * (1. + w_ncdm)/(1. + lambda));
       Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
-      dy[pba->index_bi_horizon_ncdm1+n_ncdm] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * Omega_m));//sqrt(3.) * c_asp / (a * H);//TEST!!!
+      dy[pba->index_bi_horizon_ncdm1+n_ncdm] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * Omega_m));
     }
   }
 
@@ -3265,7 +3291,7 @@ int background_derivs(
     c_asp = sqrt(1./3. * (1. + w_gbh)/(1. + lambda));
     Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
     dy[pba->index_bi_app_horizon_gbh] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh * a / 3., 2.)));
-    dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * Omega_m));//sqrt(3.) * c_asp / (a * H); ///TEST!!!
+    dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * Omega_m));
     dy[pba->index_bi_lambda_gbh] = -(1. + y[pba->index_bi_lambda_gbh]) + 3. * y[pba->index_bi_lambda_gbh] * (1. + w_gbh);
     dy[pba->index_bi_Pminus1_gbh] = -y[pba->index_bi_Pminus1_gbh] - 3. * pvecback[pba->index_bg_P_gbh];
   }

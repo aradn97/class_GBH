@@ -139,3 +139,4 @@ Also Omega_m = pvecback[pba->index_bg_Omega_M]; in perturbations.
 54. Don't get other inputs for gbh if N_gbh=0. put a condition in input.c
 55. remove index_bg_lambda_gbh and index_bg_Pminus1_gbh. They are not used in perturbations.c.
 56. extra stuff I've ordered to print: //GBH_pt_print. You can remove them at the end.
+57. if the code is slow, look at the perturbations initial condition for gbh, where I integrate in momentum space. find a way to speed it up.
