@@ -14,7 +14,7 @@ class_precision_parameter(a_ini_over_a_today_default,double,1.e-14)
  */
 class_precision_parameter(background_Nloga,int,40000)
 /**
- * Evolver to be used for thermodynamics (rk, ndf15)
+ * Evolver to be used for background (rk, ndf15)
  */
 class_type_parameter(background_evolver,int,enum evolver_type,ndf15)
 /**
@@ -66,6 +66,23 @@ class_precision_parameter(tol_ncdm_bg,double,1.e-5)
  * Using w = pressure/density, this quantifies the maximum deviation from 1/3. (for relativistic species)
  */
 class_precision_parameter(tol_ncdm_initial_w,double,1.e-3)
+/*GBH_pt_start*/
+/**
+ * Tolerance on the relative precision of the integration over
+ * gbh phase-space distributions.
+ */
+class_precision_parameter(tol_gbh,double,1.e-3)
+/**
+ * Tolerance on the relative precision of the integration over
+ * gbh phase-space distributions in the synchronous gauge.
+ */
+class_precision_parameter(tol_gbh_synchronous,double,1.e-3)
+/**
+ * Tolerance on the relative precision of the integration over
+ * gbh phase-space distributions in the newtonian gauge.
+ */
+class_precision_parameter(tol_gbh_newtonian,double,1.e-5)
+/*GBH_pt_end*/
 /**
  * Tolerance on the deviation of the conformal time of equality from the true value in 1/Mpc.
  */
@@ -314,7 +331,7 @@ class_precision_parameter(l_max_g_ten,int,5)     /**< number of momenta in Boltz
 class_precision_parameter(l_max_pol_g_ten,int,5) /**< number of momenta in Boltzmann hierarchy for photon polarization (tensor), at least 4 */
 
 /*GBH_bg_start*/
-class_precision_parameter(gbh_use_table,int,1)         /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 1*/
+class_precision_parameter(gbh_use_table,int,0)         /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
 class_precision_parameter(n_max_gbh,int,20)            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0 */ 
 class_precision_parameter(ubound_x_gbh,double,30.)     /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
 /*GBH_bg_end*/

@@ -107,7 +107,7 @@ struct background
 
   /*GBH_bg_start*/
   int last_index_gbh;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
-  int gbh_use_table;        /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 1*/
+  int gbh_use_table;        /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
   int n_max_gbh;            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0. This is given by user */ 
   double M_gbh;             /**< mass of gbh species in eV */
   double N_gbh;             /**< number of gbh species */
@@ -207,12 +207,9 @@ struct background
   int index_bg_horizon_ncdm1; /**< horizon scale of first ncdm species (others contiguous) */
 
   int index_bg_P_min1_gbh;    /**< P_{-1} of species in GBH, from quadrature integration*/   //GBH_bg
-  int index_bg_rho_gbh;       /**< density of species in GBH, from quadrature integration*/   //GBH_bg
-  int index_bg_P_gbh;         /**< density of species in GBH, from table*/   //GBH_bg
+  int index_bg_P_gbh;         /**< density of species in GBH*/   //GBH_bg
   int index_bg_app_horizon_gbh;     /**< approximate comoving horizon distance of species in GBH*/   //GBH_pt
   int index_bg_horizon_gbh;   /**< comoving horizon distance of species in GBH*/   //GBH_pt
-  int index_bg_lambda_gbh;    /**< w_{-1}=lambda in GBH*/   //GBH_pt
-  int index_bg_Pminus1_gbh;   /**< P_{-1} in GBH*/   //GBH_pt
 
   int index_bg_rho_tot;       /**< Total density */
   int index_bg_p_tot;         /**< Total pressure */
@@ -320,8 +317,7 @@ struct background
   short has_dr;        /**< presence of relativistic decay radiation? */
   short has_scf;       /**< presence of a scalar field? */
   short has_ncdm;      /**< presence of non-cold dark matter? */
-  short has_gbh;       /**< presence of gbh at background? */  //GBH_bg
-  short has_gbh_pt;    /**< presence of gbh at perturbations? */  //GBH_pt
+  short has_gbh;       /**< presence of gbh? */  //GBH_bg
   short has_lambda;    /**< presence of cosmological constant? */
   short has_fld;       /**< presence of fluid with constant w and cs2? */
   short has_ur;        /**< presence of ultra-relativistic neutrinos/relics? */
@@ -559,7 +555,9 @@ extern "C" {
                               double * n,
                               double * rho,
                               double * p,
-                              double * P_min1
+                              double * P_min1,
+                              double  *P_n,     //higher pressure moments 
+                              int n_max_gbh 
                               );
   /*GBH_bg_end*/                           
 

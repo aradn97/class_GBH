@@ -569,7 +569,7 @@ int perturbations_output_titles(
           class_store_columntitle(titles,tmp,_TRUE_);
         }
       }
-      class_store_columntitle(titles,"d_gbh",pba->has_gbh_pt);//GBH_pt
+      class_store_columntitle(titles,"d_gbh",pba->has_gbh);//GBH_pt
       class_store_columntitle(titles,"d_dcdm",pba->has_dcdm);
       class_store_columntitle(titles,"d_dr",pba->has_dr);
       class_store_columntitle(titles,"d_scf",pba->has_scf);
@@ -599,7 +599,7 @@ int perturbations_output_titles(
           class_store_columntitle(titles,tmp,_TRUE_);
         }
       }
-      class_store_columntitle(titles,"t_gbh",pba->has_gbh_pt);//GBH_pt
+      class_store_columntitle(titles,"t_gbh",pba->has_gbh);//GBH_pt
       class_store_columntitle(titles,"t_dcdm",pba->has_dcdm);
       class_store_columntitle(titles,"t_dr",pba->has_dr);
       class_store_columntitle(titles,"t_scf",pba->has_scf);
@@ -771,6 +771,16 @@ int perturbations_init(
     }
 
   }
+  /*GBH_pt_start*/
+  if (pba->has_gbh == _TRUE_) {
+
+    class_test ((ppr->gbh_fluid_approximation < gbh_fa_mb) ||
+                (ppr->gbh_fluid_approximation > gbh_fa_caio), 
+                ppt->error_message,
+                "your gbh_fluid_approximation is set to %d, out of range defined in perturbations.h",ppr->gbh_fluid_approximation);
+
+  }
+  /*GBH_pt_end*/
 
   if (pba->has_fld == _TRUE_) {
 
@@ -1307,7 +1317,7 @@ int perturbations_indices(
           ppt->has_source_delta_dr = _TRUE_;
         if (pba->has_ncdm == _TRUE_)
           ppt->has_source_delta_ncdm = _TRUE_;
-        if (pba->has_gbh_pt == _TRUE_)//GBH_pt
+        if (pba->has_gbh == _TRUE_)//GBH_pt
           ppt->has_source_delta_gbh = _TRUE_;
 
         // Thanks to the following lines, (phi,psi) are also stored as sources
@@ -1341,7 +1351,7 @@ int perturbations_indices(
           ppt->has_source_theta_dr = _TRUE_;
         if (pba->has_ncdm == _TRUE_)
           ppt->has_source_theta_ncdm = _TRUE_;
-        if (pba->has_gbh_pt == _TRUE_)//GBH_pt
+        if (pba->has_gbh == _TRUE_)//GBH_pt
           ppt->has_source_theta_gbh = _TRUE_;
       }
 
@@ -2789,7 +2799,7 @@ int perturbations_workspace_init(
     class_define_index(ppw->index_ap_ncdmfa,pba->has_ncdm,index_ap,1);
     class_define_index(ppw->index_ap_tca_idm_dr,pba->has_idr,index_ap,1);
     class_define_index(ppw->index_ap_rsa_idr,pba->has_idr,index_ap,1);
-    class_define_index(ppw->index_gbh_fa,pba->has_gbh_pt,index_ap,1);//GBH_pt
+    class_define_index(ppw->index_gbh_fa,pba->has_gbh,index_ap,1);//GBH_pt
   }
 
   ppw->ap_size=index_ap;
@@ -2820,7 +2830,7 @@ int perturbations_workspace_init(
       ppw->approx[ppw->index_ap_ncdmfa]=(int)ncdmfa_off;
     }
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
       ppw->approx[ppw->index_gbh_fa]=(int)gbh_fa_off;
     }
     /*GBH_pt_end*/
@@ -3055,6 +3065,16 @@ int perturbations_solve(
                  ppw->pvecback[pba->index_bg_rho_ncdm1+n_ncdm]);
     }
   }
+  /*GBH_pt_start*/
+  if (pba->has_gbh == _TRUE_) {
+    class_test(fabs(ppw->pvecback[pba->index_bg_P_gbh+1]/ppw->pvecback[pba->index_bg_P_gbh]/3.-1./3.)>ppr->tol_ncdm_initial_w,
+                ppt->error_message,
+                "your choice of initial time for integrating wavenumbers is inappropriate: it corresponds to a time at which the gbh species is not ultra-relativistic anymore, with w=%g, p=%g and rho=%g\n",
+                ppw->pvecback[pba->index_bg_P_gbh+1]/ppw->pvecback[pba->index_bg_P_gbh]/3.,
+                ppw->pvecback[pba->index_bg_P_gbh+1],
+                3.*ppw->pvecback[pba->index_bg_P_gbh]);
+  }
+  /*GBH_pt_end*/
 
   /* is at most the time at which sources must be sampled */
   tau_upper = ppt->tau_sampling[0];
@@ -3082,6 +3102,12 @@ int perturbations_solve(
           is_early_enough = _FALSE_;
       }
     }
+    /*GBH_pt_start*/
+    if (pba->has_gbh == _TRUE_) {     
+      if (fabs(ppw->pvecback[pba->index_bg_P_gbh+1]/ppw->pvecback[pba->index_bg_P_gbh]/3.-1./3.) > ppr->tol_ncdm_initial_w)
+        is_early_enough = _FALSE_;
+    }
+    /*GBH_pt_end*/
 
     /* also check that the two conditions on (aH/kappa') and (aH/k) are fulfilled */
     if (is_early_enough == _TRUE_) {
@@ -3366,12 +3392,12 @@ int perturbations_prepare_k_output(struct background * pba,
       }
       /* GBH lowest moments */
       /*GBH_pt_start*/
-      class_store_columntitle(ppt->scalar_titles,"delta_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"delta1_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"theta_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"theta1_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"sigma_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh_pt);
+      class_store_columntitle(ppt->scalar_titles,"delta_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"delta1_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"theta_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"theta1_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"sigma_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh);
       /*GBH_pt_end*/
 
       /* Decaying cold dark matter */
@@ -3877,7 +3903,7 @@ int perturbations_vector_init(
   ppv->q_size_ncdm = NULL;
 
   /*GBH_pt_start*/ 
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
       ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
       ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
       x = k * pba->gbh_horizon;
@@ -4057,7 +4083,7 @@ int perturbations_vector_init(
 
     /* gbh */
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
     if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off) {
       // ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
       // ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
@@ -4280,7 +4306,7 @@ int perturbations_vector_init(
       }
     }
     /*GBH_pt_start*/ 
-    if (pba->has_gbh_pt == _TRUE_) {//important for saving time   
+    if (pba->has_gbh == _TRUE_) {//important for saving time   
         
         if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off) {
           /* we don't need multipoles above l=2 (but they are
@@ -4436,7 +4462,7 @@ int perturbations_vector_init(
           any approximation. They need to be reconducted whatever
           the approximation switching is. We treat them here. Below
           we will treat other variables case by case. */
-      // if(pba->has_gbh_pt == _TRUE_)//test
+      // if(pba->has_gbh == _TRUE_)//test
       //   if(ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off)
       //     if(ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n]!=0.){//test
       //           printf("\nap_ERROR!!! y=%e,k=%e,a=%e\n",ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n],k,a);fflush(stdout);
@@ -4445,7 +4471,7 @@ int perturbations_vector_init(
       //           }
 
       /*GBH_pt_start*/ //test
-        // if (pba->has_gbh_pt == _TRUE_) {          
+        // if (pba->has_gbh == _TRUE_) {          
         //   if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
         //     ppv->y[ppv->index_pt_delta_gbh] =
         //       ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -4640,7 +4666,7 @@ int perturbations_vector_init(
         }
         
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -4736,7 +4762,7 @@ int perturbations_vector_init(
         }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -4873,7 +4899,7 @@ int perturbations_vector_init(
           }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -4994,7 +5020,7 @@ int perturbations_vector_init(
           }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -5134,7 +5160,7 @@ int perturbations_vector_init(
           }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -5311,7 +5337,7 @@ int perturbations_vector_init(
 
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -5345,11 +5371,11 @@ int perturbations_vector_init(
         approximation. Provide correct initial conditions to new set
         of variables */
 
-      if (pba->has_gbh_pt == _TRUE_) {
+      if (pba->has_gbh == _TRUE_) {
 
         if ((pa_old[ppw->index_gbh_fa] == (int)gbh_fa_off) && (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on)) {
           
-          if (ppt->perturbations_verbose>1){
+          if (ppt->perturbations_verbose>2){
             fprintf(stdout,"Mode k=%e: switch on gbh fluid approximation at tau=%e\n",k,tau);
             fflush(stdout);
           }
@@ -5930,7 +5956,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       /* all relativistic relics: ur, early ncdm, dr */
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_) || (pba->has_idr == _TRUE_)  || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_) || (pba->has_idr == _TRUE_)  || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur = ppw->pv->y[ppw->pv->index_pt_delta_g]; /* density of ultra-relativistic neutrinos/relics */
 
@@ -5983,7 +6009,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       ppw->pv->y[ppw->pv->index_pt_delta_cdm] = ppr->entropy_ini+3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g];
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur = ppw->pv->y[ppw->pv->index_pt_delta_g];
         theta_ur = ppw->pv->y[ppw->pv->index_pt_theta_g];
@@ -6015,7 +6041,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       }
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur = ppw->pv->y[ppw->pv->index_pt_delta_g];
         theta_ur = ppw->pv->y[ppw->pv->index_pt_theta_g];
@@ -6201,7 +6227,7 @@ int perturbations_initial_conditions(struct precision * ppr,
            +ppw->pvecback[pba->index_bg_phi_prime_scf]*alpha_prime);
       }
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_)  || (pba->has_idr == _TRUE_)  || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_)  || (pba->has_idr == _TRUE_)  || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur -= 4.*a_prime_over_a*alpha;
         theta_ur += k*k*alpha;
@@ -6267,7 +6293,7 @@ int perturbations_initial_conditions(struct precision * ppr,
     }
 
     /*GBH_pt_start*/
-      if (pba->has_gbh_pt == _TRUE_) {
+      if (pba->has_gbh == _TRUE_) {
         if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on){ 
           ppw->pv->y[ppw->pv->index_pt_delta_gbh] = delta_ur;
           ppw->pv->y[ppw->pv->index_pt_theta_gbh] = theta_ur;
@@ -6781,7 +6807,7 @@ int perturbations_approximations(
       }
     }
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {//indicate when the transition from GBH to FA should happen
+    if (pba->has_gbh == _TRUE_) {//indicate when the transition from GBH to FA should happen
       //if (k > ppr->ubound_x_gbh/pba->gbh_horizon) { //if you use this condition instead, only x0=kT_0 will be used to switch to fluid approx.;
                                                       //so for a given k, there won't be any switching during integration 
       if (k > ppr->ubound_x_gbh/ppw->pvecback[pba->index_bg_app_horizon_gbh]) {
@@ -7703,7 +7729,7 @@ int perturbations_total_stress_energy(
     }
 
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
       rho_gbh = 3.*ppw->pvecback[pba->index_bg_P_gbh];
       p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1];
       rho_plus_p_gbh = rho_gbh + p_gbh;
@@ -8542,7 +8568,7 @@ int perturbations_sources(
 
     /*GBH_pt_start*/
     /* gbh */
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
     if (ppt->has_source_delta_gbh == _TRUE_) {
       if (ppw->approx[ppw->index_gbh_fa]==(int)gbh_fa_on) {
         _set_source_(ppt->index_tp_delta_gbh) = y[ppw->pv->index_pt_delta_gbh]
@@ -8670,7 +8696,7 @@ int perturbations_sources(
 
     /*GBH_pt_start*/
     /* theta_gbh */
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
     if (ppt->has_source_theta_gbh == _TRUE_) {
       if (ppw->approx[ppw->index_gbh_fa]==(int)gbh_fa_on) {
         _set_source_(ppt->index_tp_theta_gbh) = y[ppw->pv->index_pt_theta_gbh]
@@ -9068,7 +9094,7 @@ int perturbations_print_variables(double tau,
     }
 
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
       if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on){
         delta_gbh = y[ppw->pv->index_pt_delta_gbh];
         theta_gbh = y[ppw->pv->index_pt_theta_gbh];
@@ -9191,7 +9217,7 @@ int perturbations_print_variables(double tau,
         }
       }
 
-      if (pba->has_gbh_pt == _TRUE_) {
+      if (pba->has_gbh == _TRUE_) {
         
         /** - --> TODO: gauge transformation of delta, deltaP/rho (?) and theta using -= 3aH(1+w_ncdm) alpha for delta. */
         
@@ -9268,12 +9294,12 @@ int perturbations_print_variables(double tau,
       }
     }
     /*GBH_pt_start*/
-    class_store_double(dataptr, delta_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, delta1_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, theta_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, theta1_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, sigma_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, sigma1_gbh, pba->has_gbh_pt, storeidx);
+    class_store_double(dataptr, delta_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, delta1_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, theta_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, theta1_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, sigma_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, sigma1_gbh, pba->has_gbh, storeidx);
     /*GBH_pt_end*/
     /* Decaying cold dark matter */
     class_store_double(dataptr, delta_dcdm, pba->has_dcdm, storeidx);
@@ -10396,7 +10422,7 @@ int perturbations_derivs(double tau,
     }
 
     /*GBH_pt_start*/ 
-    if(pba->has_gbh_pt == _TRUE_){
+    if(pba->has_gbh == _TRUE_){
       int N = pv->n_max_gbh+pv->l_max_gbh+1,ll,n;
       class_alloc(w,sizeof(double)*N,ppt->error_message);
 

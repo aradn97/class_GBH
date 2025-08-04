@@ -412,6 +412,7 @@ int background_functions(
   double current_x_value; 
   double interpolated_integral,interpolated_rho; // interpolated values of rho
   double *interpolated_w_n; // Pointer to store interpolated values of w_n
+  double *P_n; // Pointer to store P_n values for gbh
   /*GBH_bg_end*/
 
   /** - initialize local variables */
@@ -547,77 +548,114 @@ int background_functions(
 
   /*GBH_bg_start*/
   if(pba->has_gbh == _TRUE_){
-    current_x_value = pba->M_gbh * a;
-    // Interpolate `rho` for GBH from the saved array of pre-computed values
-    if(current_x_value<=100.)
-    {
+
+    if (pba->gbh_use_table == 1){
+      current_x_value = pba->M_gbh * a;
+      // Interpolate `rho` for GBH from the saved array of pre-computed values
+      if(current_x_value<=100.)
+      {
+        class_call(array_interpolate_spline(
+                                            pba->x_gbh_bg,
+                                            pba->x_size_gbh_bg,
+                                            pba->rho_gbh_bg,
+                                            pba->d2rho_gbh_bg,
+                                            1, //number of columns in rho_gbh_bg
+                                            current_x_value,  // Replace with the appropriate value, e.g., 1/a-1
+                                            &pba->last_index_gbh,
+                                            &interpolated_integral,
+                                            1, //we want interpolation for 1 column only
+                                            pba->error_message),
+                  pba->error_message, pba->error_message);
+      }
+      else
+      {
+        interpolated_integral = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * current_x_value / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
+      }
+      /* function returning background gbh quantities from quadrature integration (only
+          those for which non-NULL pointers are passed) */
+      class_call(background_gbh_momenta(
+                                          pba->q_gbh_bg,
+                                          pba->weights_gbh_bg,
+                                          pba->q_size_gbh_bg,
+                                          pba->M_gbh,
+                                          pba->factor_gbh,
+                                          1./a-1.,
+                                          NULL,
+                                          NULL, 
+                                          NULL, 
+                                          &P_min1,  //this entry is why we're calling this function
+                                          NULL,     //we have a table for w's, so no need for P_n
+                                          pba->n_max_gbh),
+                  pba->error_message,
+                  pba->error_message);
+      
+      pvecback[pba->index_bg_P_min1_gbh] = P_min1; //our table does not yet include P_min1, so we need quadrature
+    
+      interpolated_rho = interpolated_integral * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
+      pvecback[pba->index_bg_P_gbh] = interpolated_rho / 3.;
+    
+      class_alloc(interpolated_w_n, sizeof(double) * (pba->n_max_gbh+1), pba->error_message);
+      // Interpolate `w_n` for GBH from the saved array of pre-computed values
+      if(current_x_value<=100.)
+      {
       class_call(array_interpolate_spline(
                                           pba->x_gbh_bg,
                                           pba->x_size_gbh_bg,
-                                          pba->rho_gbh_bg,
-                                          pba->d2rho_gbh_bg,
-                                          1, //number of columns in rho_gbh_bg
+                                          pba->w_gbh_bg,
+                                          pba->d2w_gbh_bg,
+                                          pba->n_max_gbh_table, //number of columns in w_gbh_bg
                                           current_x_value,  // Replace with the appropriate value, e.g., 1/a-1
                                           &pba->last_index_gbh,
-                                          &interpolated_integral,
-                                          1, //we want interpolation for 1 column only
+                                          interpolated_w_n,
+                                          pba->n_max_gbh+1, //the first column is w_0=1/3, so we'll ignore that.
                                           pba->error_message),
                 pba->error_message, pba->error_message);
+      }
+      else{
+            for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) 
+            {
+              interpolated_w_n[n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(100./current_x_value,2*n_gbh);
+            }
+      }
+      for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) //interact with the pre-computed table of w_n's here
+      {
+        pvecback[pba->index_bg_P_gbh + n_gbh] = 3.*pvecback[pba->index_bg_P_gbh] * interpolated_w_n[n_gbh];
+      }
+      // Free the dynamically allocated memory for interpolated_w_n
+      free(interpolated_w_n);
+      
     }
-    else
-    {
-      interpolated_integral = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * current_x_value / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
+    else{ //no table for rho or w's; everything should be computed using quadrature integration
+      class_alloc(P_n, sizeof(double) * (pba->n_max_gbh-1), pba->error_message); //starts from P_2.
+      /* function returning background gbh quantities from quadrature integration (only
+          those for which non-NULL pointers are passed) */
+      class_call(background_gbh_momenta(
+                                          pba->q_gbh_bg,
+                                          pba->weights_gbh_bg,
+                                          pba->q_size_gbh_bg,
+                                          pba->M_gbh,
+                                          pba->factor_gbh,
+                                          1./a-1.,
+                                          NULL, // no need for number density
+                                          &rho_gbh,
+                                          &p_gbh, 
+                                          &P_min1,
+                                          P_n,
+                                          pba->n_max_gbh),
+                  pba->error_message,
+                  pba->error_message);
+      pvecback[pba->index_bg_P_min1_gbh] = P_min1;
+      pvecback[pba->index_bg_P_gbh] = rho_gbh/3.;
+      pvecback[pba->index_bg_P_gbh + 1] = p_gbh;
+      for(n_gbh=2; n_gbh<=pba->n_max_gbh; n_gbh++) //higher moments
+      {
+        pvecback[pba->index_bg_P_gbh + n_gbh] = P_n[n_gbh-2];
+      }
+
+      // Free the dynamically allocated memory for P_n
+      free(P_n);
     }
-    /* function returning background gbh quantities from quadrature integration (only
-         those for which non-NULL pointers are passed) */
-    class_call(background_gbh_momenta(
-                                        pba->q_gbh_bg,
-                                        pba->weights_gbh_bg,
-                                        pba->q_size_gbh_bg,
-                                        pba->M_gbh,
-                                        pba->factor_gbh,
-                                        1./a-1.,
-                                        NULL,
-                                        &rho_gbh,
-                                        &p_gbh, //TEST!!! used to be NULL
-                                        &P_min1),
-                pba->error_message,
-                pba->error_message);
-    pvecback[pba->index_bg_rho_gbh] = rho_gbh;
-    pvecback[pba->index_bg_P_min1_gbh] = P_min1;
-    //if(a>=1.)//test
-    //  printf("\nInterpolated rho= %e, a= %e, x= %e, pba->rho_gbh_bg[pba->x_size_gbh_bg-1]= %e, pba->x_gbh_bg[pba->x_size_gbh_bg-1]=%e\n",interpolated_rho,a,current_x_value, pba->rho_gbh_bg[pba->x_size_gbh_bg-1],pba->x_gbh_bg[pba->x_size_gbh_bg-1]);
-    interpolated_rho = interpolated_integral * pba->N_gbh * 15./pow(_PI_,2)*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
-    pvecback[pba->index_bg_P_gbh] = rho_gbh/3.;//TEST!!! interpolated_rho / 3.;
-    //pvecback[pba->index_bg_P_gbh] = pvecback_B[pba->index_bi_P0_gbh];
-    class_alloc(interpolated_w_n, sizeof(double) * (pba->n_max_gbh+1), pba->error_message);
-    // Interpolate `w_n` for GBH from the saved array of pre-computed values
-    if(current_x_value<=100.)
-    {
-    class_call(array_interpolate_spline(
-                                        pba->x_gbh_bg,
-                                        pba->x_size_gbh_bg,
-                                        pba->w_gbh_bg,
-                                        pba->d2w_gbh_bg,
-                                        pba->n_max_gbh_table, //number of columns in w_gbh_bg
-                                        current_x_value,  // Replace with the appropriate value, e.g., 1/a-1
-                                        &pba->last_index_gbh,
-                                        interpolated_w_n,
-                                        pba->n_max_gbh+1, //the first column is w_0=1/3, so we'll ignore that.
-                                        pba->error_message),
-              pba->error_message, pba->error_message);
-    }
-    else{
-          for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) 
-          {
-            interpolated_w_n[n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(100./current_x_value,2*n_gbh);
-          }
-    }
-    for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) //interact with the pre-computed table of w_n's here
-    {
-      pvecback[pba->index_bg_P_gbh + n_gbh] = 3.*pvecback[pba->index_bg_P_gbh] * interpolated_w_n[n_gbh];
-    }
-    pvecback[pba->index_bg_P_gbh + 1] = p_gbh; //TEST!!! remove this after testing
+    
     rho_tot += 3.*pvecback[pba->index_bg_P_gbh];
     p_tot +=  pvecback[pba->index_bg_P_gbh+1];
     
@@ -628,16 +666,13 @@ int background_functions(
          to energy density */
     rho_m += 3.*pvecback[pba->index_bg_P_gbh] - 3.* pvecback[pba->index_bg_P_gbh+1];
 
-    // Free the dynamically allocated memory for interpolated_w_n
-    free(interpolated_w_n);
   }
   /*GBH_bg_end*/
+
   /*GBH_pt_start*/
   if(pba->has_gbh == _TRUE_){
     pvecback[pba->index_bg_app_horizon_gbh] = pvecback_B[pba->index_bi_app_horizon_gbh]; // approximate neutrino horizon T
     pvecback[pba->index_bg_horizon_gbh] = pvecback_B[pba->index_bi_horizon_gbh]; // neutrino horizon lambda_hor
-    pvecback[pba->index_bg_lambda_gbh] = pvecback_B[pba->index_bi_lambda_gbh]; // lambda=w_{-1} of neutrinos
-    pvecback[pba->index_bg_Pminus1_gbh] = pvecback_B[pba->index_bi_Pminus1_gbh]; // P_{-1} of neutrinos
   }
   /*GBH_pt_end*/
 
@@ -1055,19 +1090,21 @@ int background_free_input(
   }
   /*GBH_bg_start*/
   if(pba->has_gbh == _TRUE_){
-  free(pba->q_gbh_bg);
-  free(pba->weights_gbh_bg);
-  free(pba->dlnf0_dlnq_gbh);
+    free(pba->q_gbh_bg);
+    free(pba->weights_gbh_bg);
+    free(pba->dlnf0_dlnq_gbh);
 
-  free(pba->q_gbh); //GBH_pt
-  free(pba->weights_gbh); //GBH_pt
+    free(pba->q_gbh); //GBH_pt
+    free(pba->weights_gbh); //GBH_pt
 
-  free(pba->x_gbh_bg);
-  free(pba->w_gbh_bg);
-  free(pba->d2w_gbh_bg);
-
-  free(pba->rho_gbh_bg);
-  free(pba->d2rho_gbh_bg);
+    if(pba->gbh_use_table == 1){
+      free(pba->x_gbh_bg);
+      free(pba->w_gbh_bg);
+      free(pba->d2w_gbh_bg);
+      
+      free(pba->rho_gbh_bg);
+      free(pba->d2rho_gbh_bg);
+    }
   } 
   /*GBH_bg_end*/
 
@@ -1191,17 +1228,12 @@ int background_indices(
   class_define_index(pba->index_bg_horizon_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_caio_fa*/
   /* - index for n GBH moments*/
   class_define_index(pba->index_bg_P_min1_gbh,pba->has_gbh,index_bg,1); //GBH_bg
-  class_define_index(pba->index_bg_rho_gbh,pba->has_gbh,index_bg,1); //GBH_bg
   class_define_index(pba->index_bg_P_gbh,pba->has_gbh,index_bg,pba->n_max_gbh+1); //GBH_bg
 
   /*GBH_pt_start*/
   /* -> comoving horizon of massive neutrinos solved by gbh */
   class_define_index(pba->index_bg_app_horizon_gbh,pba->has_gbh,index_bg,1); 
   class_define_index(pba->index_bg_horizon_gbh,pba->has_gbh,index_bg,1); 
-  /* -> w_{-1}=lambda of massive neutrinos solved by gbh */
-  class_define_index(pba->index_bg_lambda_gbh,pba->has_gbh,index_bg,1); 
-  /* -> P_{-1}=lambda of massive neutrinos solved by gbh */
-  class_define_index(pba->index_bg_Pminus1_gbh,pba->has_gbh,index_bg,1); 
   /*GBH_pt_end*/
   
 
@@ -1797,7 +1829,7 @@ int background_gbh_init(
   pba->last_index_gbh = 0; //this will be used by spline function to perform faster binary searches when interpolating, using the previous interpolated index
 
   /*Do we need to read in a file to interpolate the distribution function? */
-  if (pba->gbh_use_table==1) {
+  if (pba->gbh_use_table==1) { //this part of the code prepares second order derivatives for spline interpolation. this is only once called in input.c
     w_table = fopen(pba->gbh_table_address,"r");
     class_test(w_table == NULL,pba->error_message,
                 "Could not open file %s!",pba->gbh_table_address);
@@ -1900,7 +1932,7 @@ int background_gbh_init(
                                pba->weights_gbh,
                                &(pba->q_size_gbh),
                                _QUADRATURE_MAX_,
-                               ppr->tol_ncdm, // use same tolerance as ncdm
+                               ppr->tol_gbh, 
                                pbadist.q,
                                pbadist.tablesize,
                                background_ncdm_test_function, // also the test function is the same as ncdm
@@ -2011,6 +2043,8 @@ int background_gbh_init(
  * @param rho      Output: energy density
  * @param p        Output: pressure
  * @param P_min1   Output: P_{-1} used in the asymptotic sound speed
+ * @param P_n      Output array of length n_max_gbh-1 (P_2…P_{n_max_gbh})
+ * @param n_max_gbh Input: maximum number of moments to calculate
  *
  */
 
@@ -2023,13 +2057,15 @@ int background_gbh_momenta(
                             double factor,
                             double z,
                             double * n,
-                            double * rho, // density
-                            double * p,   // pressure
-                            double * P_min1  // P_{-1} used in the asymptotic sound speed
+                            double * rho,     // density
+                            double * p,       // pressure
+                            double * P_min1,  // P_{-1} used in the asymptotic sound speed
+                            double  *P_n,     //higher pressure moments 
+                            int n_max_gbh  
                             ) {
 
-  int index_q;
-  double epsilon;
+  int nn, index_q;
+  double epsilon,epsilon2;
   double q2;
   double factor2;
   /** Summary: */
@@ -2042,6 +2078,10 @@ int background_gbh_momenta(
   if (rho!=NULL) *rho = 0.;
   if (p!=NULL) *p = 0.;
   if (P_min1!=NULL) *P_min1 = 0.;
+  if (P_n != NULL) {
+    for (nn = 2; nn <= n_max_gbh; nn++)
+      P_n[nn-2] = 0.;
+  }
 
   /** - loop over momenta */
   for (index_q=0; index_q<qsize; index_q++) {
@@ -2057,6 +2097,12 @@ int background_gbh_momenta(
     if (rho!=NULL) *rho += q2*epsilon*wvec[index_q];
     if (p!=NULL) *p += q2*q2/3./epsilon*wvec[index_q];
     if (P_min1!=NULL) *P_min1 += pow(epsilon,3.)/3.*wvec[index_q];
+    if (P_n != NULL) {
+      epsilon2 = epsilon*epsilon;
+      for (nn = 2; nn <= n_max_gbh; nn++) {
+        P_n[nn-2] += q2*epsilon/3.*pow(q2/epsilon2, (double)nn) * wvec[index_q];
+      }
+    }
   }
 
   /** - adjust normalization */
@@ -2064,6 +2110,10 @@ int background_gbh_momenta(
   if (rho!=NULL) *rho *= factor2;
   if (p!=NULL) *p *= factor2;
   if (P_min1!=NULL) *P_min1 *= factor2;
+  if (P_n != NULL) {
+    for (nn = 2; nn <= n_max_gbh; nn++)
+      P_n[nn-2] *= factor2;
+  }
 
   return _SUCCESS_;
 }
@@ -2581,7 +2631,7 @@ int background_solve(
              pba->Omega0_dr+pba->Omega0_dcdm,pba->Omega0_dcdmdr);
       printf("     -> Omega_ini_dcdm/Omega_b = %f\n",pba->Omega_ini_dcdm/pba->Omega0_b);
     }
-    if ((pba->has_gbh == _TRUE_)&&(pba->has_gbh_pt == _TRUE_)) {
+    if (pba->has_gbh == _TRUE_) {
       printf("    GBH details:\n");
       printf("     -> Omega0_gbh = %f\n",pba->Omega0_gbh);
       printf("     -> gbh_horizon = %f\n",pba->gbh_horizon);
@@ -2764,7 +2814,7 @@ int background_initial_conditions(
 
     //this is commented for now until I do another implementation that solves for rho rather than reading from the table    /** - We must add the relativistic contribution from relativistic species that are being solved by GBH*/
     //pvecback_integration[pba->index_bi_P0_gbh] =1./3.*3.044*7./8.*pow(4./11.,4./3.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4); 
-    rho_rad += 3. * 1./3.*pba->N_gbh*7./8.*pow(0.71611,4.)*pba->Omega0_g * pow(pba->H0,2)/pow(a,4);//pvecback_integration[pba->index_bi_P0_gbh]; // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
+    rho_rad += 3. * 1./3. * pba->N_gbh * 7. / 8. * pow(0.71611,4.) * pba->Omega0_g * pow(pba->H0,2) / pow(a,4);//pvecback_integration[pba->index_bi_P0_gbh]; // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
    }
   /*GBH_bg_end*/
   
@@ -3031,7 +3081,6 @@ int background_output_titles(
   /*GBH_bg_start*/
   if (pba->has_gbh == _TRUE_) {
     class_store_columntitle(titles,"(.)P_min1_gbh",pba->has_gbh); 
-    class_store_columntitle(titles,"(.)rho_gbh",pba->has_gbh); 
     for (n=0; n<pba->n_max_gbh+1; n++)
     {
       sprintf(tmp,"(.)P_gbh_[%d]",n);
@@ -3042,8 +3091,6 @@ int background_output_titles(
   /*GBH_pt_start*/
   class_store_columntitle(titles,"(.)app_horizon_gbh",pba->has_gbh); 
   class_store_columntitle(titles,"(.)horizon_gbh",pba->has_gbh); 
-  class_store_columntitle(titles,"(.)lambda_gbh",pba->has_gbh);
-  class_store_columntitle(titles,"(.)Pminus1_gbh",pba->has_gbh); 
   /*GBH_pt_end*/
   class_store_columntitle(titles,"(.)rho_lambda",pba->has_lambda);
   class_store_columntitle(titles,"(.)rho_fld",pba->has_fld);
@@ -3123,7 +3170,6 @@ int background_output_data(
     /*GBH_bg_start*/
     if (pba->has_gbh == _TRUE_) { 
       class_store_double(dataptr,pvecback[pba->index_bg_P_min1_gbh],pba->has_gbh,storeidx);
-      class_store_double(dataptr,pvecback[pba->index_bg_rho_gbh],pba->has_gbh,storeidx); 
       for (n=0; n<pba->n_max_gbh+1; n++)
       {
         class_store_double(dataptr,pvecback[pba->index_bg_P_gbh+n],pba->has_gbh,storeidx); 
@@ -3133,8 +3179,6 @@ int background_output_data(
     /*GBH_pt_start*/
     class_store_double(dataptr,pvecback[pba->index_bg_app_horizon_gbh],pba->has_gbh,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_horizon_gbh],pba->has_gbh,storeidx); 
-    class_store_double(dataptr,pvecback[pba->index_bg_lambda_gbh],pba->has_gbh,storeidx); 
-    class_store_double(dataptr,pvecback[pba->index_bg_Pminus1_gbh],pba->has_gbh,storeidx); 
     /*GBH_pt_end*/
     class_store_double(dataptr,pvecback[pba->index_bg_rho_lambda],pba->has_lambda,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_fld],pba->has_fld,storeidx);
