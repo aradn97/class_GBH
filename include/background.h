@@ -291,8 +291,6 @@ struct background
   int index_bi_horizon_ncdm1; /**< {C} horizon distance in Mpc for first ncdm species (others contiguous) */
   int index_bi_app_horizon_gbh;  /**< {C} approximate horizon distance in Mpc for gbh */
   int index_bi_horizon_gbh;   /**< {C} horizon distance in Mpc for gbh */
-  int index_bi_lambda_gbh;    /**< {C} w_{-1}=lambda for gbh */
-  int index_bi_Pminus1_gbh;   /**< {C} P_{-1} for gbh */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
   int index_bi_D_prime; /**< {C} D satisfies \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$ */
 

@@ -1342,10 +1342,6 @@ int background_indices(
   /* -> comoving horizon of massive neutrinos solved by gbh */
   class_define_index(pba->index_bi_app_horizon_gbh,pba->has_gbh,index_bi,1); 
   class_define_index(pba->index_bi_horizon_gbh,pba->has_gbh,index_bi,1); 
-  /* -> w_{-1} of massive neutrinos solved by gbh */
-  class_define_index(pba->index_bi_lambda_gbh,pba->has_gbh,index_bi,1); 
-  /* -> P_{-1} of massive neutrinos solved by gbh */
-  class_define_index(pba->index_bi_Pminus1_gbh,pba->has_gbh,index_bi,1); 
   /*GBH_pt_end*/
 
   /* -> energy density in DCDM */
@@ -2939,8 +2935,6 @@ int background_initial_conditions(
   if (pba->has_gbh == _TRUE_) {
       pvecback_integration[pba->index_bi_app_horizon_gbh] = pvecback_integration[pba->index_bi_tau]; //equal to tau initially
       pvecback_integration[pba->index_bi_horizon_gbh] = pvecback_integration[pba->index_bi_tau]; 
-      pvecback_integration[pba->index_bi_lambda_gbh] = 1./3.; // w_{-1}=1/3 initially, like all other w's 
-      pvecback_integration[pba->index_bi_Pminus1_gbh] = pvecback[pba->index_bg_P_gbh]; // P_{-1} = P_gbh initially equals rho/3.
   }
   /*GBH_pt_end*/
 
@@ -3336,8 +3330,6 @@ int background_derivs(
     Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
     dy[pba->index_bi_app_horizon_gbh] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh * a / 3., 2.)));
     dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * Omega_m));
-    dy[pba->index_bi_lambda_gbh] = -(1. + y[pba->index_bi_lambda_gbh]) + 3. * y[pba->index_bi_lambda_gbh] * (1. + w_gbh);
-    dy[pba->index_bi_Pminus1_gbh] = -y[pba->index_bi_Pminus1_gbh] - 3. * pvecback[pba->index_bg_P_gbh];
   }
   /*GBH_pt_end*/
 
