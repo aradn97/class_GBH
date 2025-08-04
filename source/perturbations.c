@@ -569,7 +569,7 @@ int perturbations_output_titles(
           class_store_columntitle(titles,tmp,_TRUE_);
         }
       }
-      class_store_columntitle(titles,"d_gbh",pba->has_gbh_pt);//GBH_pt
+      class_store_columntitle(titles,"d_gbh",pba->has_gbh);//GBH_pt
       class_store_columntitle(titles,"d_dcdm",pba->has_dcdm);
       class_store_columntitle(titles,"d_dr",pba->has_dr);
       class_store_columntitle(titles,"d_scf",pba->has_scf);
@@ -599,7 +599,7 @@ int perturbations_output_titles(
           class_store_columntitle(titles,tmp,_TRUE_);
         }
       }
-      class_store_columntitle(titles,"t_gbh",pba->has_gbh_pt);//GBH_pt
+      class_store_columntitle(titles,"t_gbh",pba->has_gbh);//GBH_pt
       class_store_columntitle(titles,"t_dcdm",pba->has_dcdm);
       class_store_columntitle(titles,"t_dr",pba->has_dr);
       class_store_columntitle(titles,"t_scf",pba->has_scf);
@@ -760,7 +760,7 @@ int perturbations_init(
   if (pba->has_ncdm == _TRUE_) {
 
     class_test ((ppr->ncdm_fluid_approximation < ncdmfa_mb) ||
-                (ppr->ncdm_fluid_approximation > ncdmfa_none),
+                (ppr->ncdm_fluid_approximation > ncdmfa_caio), /*ncdm_caio_fa*/
                 ppt->error_message,
                 "your ncdm_fluid_approximation is set to %d, out of range defined in perturbations.h",ppr->ncdm_fluid_approximation);
 
@@ -771,6 +771,16 @@ int perturbations_init(
     }
 
   }
+  /*GBH_pt_start*/
+  if (pba->has_gbh == _TRUE_) {
+
+    class_test ((ppr->gbh_fluid_approximation < gbh_fa_mb) ||
+                (ppr->gbh_fluid_approximation > gbh_fa_caio), 
+                ppt->error_message,
+                "your gbh_fluid_approximation is set to %d, out of range defined in perturbations.h",ppr->gbh_fluid_approximation);
+
+  }
+  /*GBH_pt_end*/
 
   if (pba->has_fld == _TRUE_) {
 
@@ -1307,7 +1317,7 @@ int perturbations_indices(
           ppt->has_source_delta_dr = _TRUE_;
         if (pba->has_ncdm == _TRUE_)
           ppt->has_source_delta_ncdm = _TRUE_;
-        if (pba->has_gbh_pt == _TRUE_)//GBH_pt
+        if (pba->has_gbh == _TRUE_)//GBH_pt
           ppt->has_source_delta_gbh = _TRUE_;
 
         // Thanks to the following lines, (phi,psi) are also stored as sources
@@ -1341,7 +1351,7 @@ int perturbations_indices(
           ppt->has_source_theta_dr = _TRUE_;
         if (pba->has_ncdm == _TRUE_)
           ppt->has_source_theta_ncdm = _TRUE_;
-        if (pba->has_gbh_pt == _TRUE_)//GBH_pt
+        if (pba->has_gbh == _TRUE_)//GBH_pt
           ppt->has_source_theta_gbh = _TRUE_;
       }
 
@@ -2789,7 +2799,7 @@ int perturbations_workspace_init(
     class_define_index(ppw->index_ap_ncdmfa,pba->has_ncdm,index_ap,1);
     class_define_index(ppw->index_ap_tca_idm_dr,pba->has_idr,index_ap,1);
     class_define_index(ppw->index_ap_rsa_idr,pba->has_idr,index_ap,1);
-    class_define_index(ppw->index_gbh_fa,pba->has_gbh_pt,index_ap,1);//GBH_pt
+    class_define_index(ppw->index_gbh_fa,pba->has_gbh,index_ap,1);//GBH_pt
   }
 
   ppw->ap_size=index_ap;
@@ -2820,7 +2830,7 @@ int perturbations_workspace_init(
       ppw->approx[ppw->index_ap_ncdmfa]=(int)ncdmfa_off;
     }
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
       ppw->approx[ppw->index_gbh_fa]=(int)gbh_fa_off;
     }
     /*GBH_pt_end*/
@@ -3055,6 +3065,16 @@ int perturbations_solve(
                  ppw->pvecback[pba->index_bg_rho_ncdm1+n_ncdm]);
     }
   }
+  /*GBH_pt_start*/
+  if (pba->has_gbh == _TRUE_) {
+    class_test(fabs(ppw->pvecback[pba->index_bg_P_gbh+1]/ppw->pvecback[pba->index_bg_P_gbh]/3.-1./3.)>ppr->tol_ncdm_initial_w,
+                ppt->error_message,
+                "your choice of initial time for integrating wavenumbers is inappropriate: it corresponds to a time at which the gbh species is not ultra-relativistic anymore, with w=%g, p=%g and rho=%g\n",
+                ppw->pvecback[pba->index_bg_P_gbh+1]/ppw->pvecback[pba->index_bg_P_gbh]/3.,
+                ppw->pvecback[pba->index_bg_P_gbh+1],
+                3.*ppw->pvecback[pba->index_bg_P_gbh]);
+  }
+  /*GBH_pt_end*/
 
   /* is at most the time at which sources must be sampled */
   tau_upper = ppt->tau_sampling[0];
@@ -3082,6 +3102,12 @@ int perturbations_solve(
           is_early_enough = _FALSE_;
       }
     }
+    /*GBH_pt_start*/
+    if (pba->has_gbh == _TRUE_) {     
+      if (fabs(ppw->pvecback[pba->index_bg_P_gbh+1]/ppw->pvecback[pba->index_bg_P_gbh]/3.-1./3.) > ppr->tol_ncdm_initial_w)
+        is_early_enough = _FALSE_;
+    }
+    /*GBH_pt_end*/
 
     /* also check that the two conditions on (aH/kappa') and (aH/k) are fulfilled */
     if (is_early_enough == _TRUE_) {
@@ -3260,7 +3286,6 @@ int perturbations_solve(
                                ppt->error_message),
                ppt->error_message,
                ppt->error_message);
-
   }
 
   /** - if perturbations were printed in a file, close the file */
@@ -3333,6 +3358,7 @@ int perturbations_prepare_k_output(struct background * pba,
       class_store_columntitle(ppt->scalar_titles,"theta_b",_TRUE_);
       class_store_columntitle(ppt->scalar_titles,"psi",_TRUE_);
       class_store_columntitle(ppt->scalar_titles,"phi",_TRUE_);
+      class_store_columntitle(ppt->scalar_titles,"phi_prime",_TRUE_); //GBH_pt_print
       /* Perturbed recombination */
       class_store_columntitle(ppt->scalar_titles,"delta_Tb",ppt->has_perturbed_recombination);
       class_store_columntitle(ppt->scalar_titles,"delta_chi",ppt->has_perturbed_recombination);
@@ -3366,12 +3392,12 @@ int perturbations_prepare_k_output(struct background * pba,
       }
       /* GBH lowest moments */
       /*GBH_pt_start*/
-      class_store_columntitle(ppt->scalar_titles,"delta_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"delta1_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"theta_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"theta1_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"sigma_gbh",pba->has_gbh_pt);
-      class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh_pt);
+      class_store_columntitle(ppt->scalar_titles,"delta_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"delta1_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"theta_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"theta1_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"sigma_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh);
       /*GBH_pt_end*/
 
       /* Decaying cold dark matter */
@@ -3876,6 +3902,16 @@ int perturbations_vector_init(
   ppv->l_max_ncdm = NULL;
   ppv->q_size_ncdm = NULL;
 
+  /*GBH_pt_start*/ 
+    if (pba->has_gbh == _TRUE_) {
+      ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
+      ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
+      x = k * pba->gbh_horizon;
+      class_test(ppv->n_max_gbh + ppv->l_max_gbh > pba->n_max_gbh, ppt->error_message,
+                  "The background pba->n_max_gbh is smaller than the maximum index needed for w[] in perturbation equations. x= %e", x);
+    }
+  /*GBH_pt_end*/
+
   /** - define all indices in this new vector (depends on approximation scheme, described by the input structure ppw-->pa) */
 
   index_pt = 0;
@@ -4047,22 +4083,18 @@ int perturbations_vector_init(
 
     /* gbh */
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
     if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off) {
-      x = k * pba->gbh_horizon;
-      ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
-      ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
-      //printf("\nk: %e, n: %d, l: %d ",k,ppv->n_max_gbh,ppv->l_max_gbh);
-
-      class_test(ppv->n_max_gbh + ppv->l_max_gbh > pba->n_max_gbh, ppt->error_message,
-                  "The background pba->n_max_gbh is smaller than the maximum index needed for w[] in perturbation equations. x= %e", x);
+      // ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
+      // ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
       class_define_index(ppv->index_pt_Delta_gbh,_TRUE_,index_pt,ppv->n_max_gbh); /* pressure moments in Boltzmann hierarchy */
       class_define_index(ppv->index_pt_Sigma_gbh,_TRUE_,index_pt,(ppv->n_max_gbh)*(ppv->l_max_gbh)); /* angular moments in Boltzmann hierarchy */
     }
     else{
     class_define_index(ppv->index_pt_delta_gbh,_TRUE_,index_pt,1); /* density */
     class_define_index(ppv->index_pt_theta_gbh,_TRUE_,index_pt,1);
-    class_define_index(ppv->index_pt_sigma_gbh,_TRUE_,index_pt,1); /* shear */ 
+    if(ppr->gbh_fluid_approximation != gbh_fa_caio) // if we're using Caio's approximation, we don't need to integrate the shear
+      class_define_index(ppv->index_pt_sigma_gbh,_TRUE_,index_pt,1); /* shear */ 
     }
     }
     /*GBH_pt_end*/
@@ -4274,7 +4306,7 @@ int perturbations_vector_init(
       }
     }
     /*GBH_pt_start*/ 
-    if (pba->has_gbh_pt == _TRUE_) {//important for saving time   
+    if (pba->has_gbh == _TRUE_) {//important for saving time   
         
         if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off) {
           /* we don't need multipoles above l=2 (but they are
@@ -4430,7 +4462,7 @@ int perturbations_vector_init(
           any approximation. They need to be reconducted whatever
           the approximation switching is. We treat them here. Below
           we will treat other variables case by case. */
-      // if(pba->has_gbh_pt == _TRUE_)//test
+      // if(pba->has_gbh == _TRUE_)//test
       //   if(ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off)
       //     if(ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n]!=0.){//test
       //           printf("\nap_ERROR!!! y=%e,k=%e,a=%e\n",ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n],k,a);fflush(stdout);
@@ -4439,7 +4471,7 @@ int perturbations_vector_init(
       //           }
 
       /*GBH_pt_start*/ //test
-        // if (pba->has_gbh_pt == _TRUE_) {          
+        // if (pba->has_gbh == _TRUE_) {          
         //   if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
         //     ppv->y[ppv->index_pt_delta_gbh] =
         //       ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -4447,8 +4479,9 @@ int perturbations_vector_init(
         //     ppv->y[ppv->index_pt_theta_gbh] =
         //      ppw->pv->y[ppw->pv->index_pt_theta_gbh];
 
-        //     ppv->y[ppv->index_pt_sigma_gbh] =
-        //      ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
+        //     if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+        //      ppv->y[ppv->index_pt_sigma_gbh] =
+        //        ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
         //   }
         //   else {
         //   for(n=0;n<ppv->n_max_gbh;n++)
@@ -4633,16 +4666,16 @@ int perturbations_vector_init(
         }
         
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
 
             ppv->y[ppv->index_pt_theta_gbh] =
                 ppw->pv->y[ppw->pv->index_pt_theta_gbh];
-
-            ppv->y[ppv->index_pt_sigma_gbh] =
-              ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
+            if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+              ppv->y[ppv->index_pt_sigma_gbh] =
+                ppw->pv->y[ppw->pv->index_pt_sigma_gbh];          
           }
           else {
           for(n=0;n<ppv->n_max_gbh;n++)
@@ -4729,16 +4762,16 @@ int perturbations_vector_init(
         }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
 
             ppv->y[ppv->index_pt_theta_gbh] =
                 ppw->pv->y[ppw->pv->index_pt_theta_gbh];
-
-            ppv->y[ppv->index_pt_sigma_gbh] =
-              ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
+            if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+              ppv->y[ppv->index_pt_sigma_gbh] =
+                ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
           }
           else {
           for(n=0;n<ppv->n_max_gbh;n++)
@@ -4866,16 +4899,16 @@ int perturbations_vector_init(
           }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
 
             ppv->y[ppv->index_pt_theta_gbh] =
                 ppw->pv->y[ppw->pv->index_pt_theta_gbh];
-
-            ppv->y[ppv->index_pt_sigma_gbh] =
-              ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
+            if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+              ppv->y[ppv->index_pt_sigma_gbh] =
+                ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
           }
           else {
           for(n=0;n<ppv->n_max_gbh;n++)
@@ -4987,7 +5020,7 @@ int perturbations_vector_init(
           }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
@@ -4995,8 +5028,9 @@ int perturbations_vector_init(
             ppv->y[ppv->index_pt_theta_gbh] =
                 ppw->pv->y[ppw->pv->index_pt_theta_gbh];
 
-            ppv->y[ppv->index_pt_sigma_gbh] =
-              ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
+            if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+              ppv->y[ppv->index_pt_sigma_gbh] =
+                ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
           }
           else {
           for(n=0;n<ppv->n_max_gbh;n++)
@@ -5126,16 +5160,16 @@ int perturbations_vector_init(
           }
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
 
             ppv->y[ppv->index_pt_theta_gbh] =
                 ppw->pv->y[ppw->pv->index_pt_theta_gbh];
-
-            ppv->y[ppv->index_pt_sigma_gbh] =
-              ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
+            if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+              ppv->y[ppv->index_pt_sigma_gbh] =
+                ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
           }
           else {
           for(n=0;n<ppv->n_max_gbh;n++)
@@ -5303,16 +5337,16 @@ int perturbations_vector_init(
 
 
         /*GBH_pt_start*/
-        if (pba->has_gbh_pt == _TRUE_) {          
+        if (pba->has_gbh == _TRUE_) {          
           if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {
             ppv->y[ppv->index_pt_delta_gbh] =
               ppw->pv->y[ppw->pv->index_pt_delta_gbh];
 
             ppv->y[ppv->index_pt_theta_gbh] =
                 ppw->pv->y[ppw->pv->index_pt_theta_gbh];
-
-            ppv->y[ppv->index_pt_sigma_gbh] =
-              ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
+            if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+              ppv->y[ppv->index_pt_sigma_gbh] =
+                ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
           }
           else {
           for(n=0;n<ppv->n_max_gbh;n++)
@@ -5337,11 +5371,11 @@ int perturbations_vector_init(
         approximation. Provide correct initial conditions to new set
         of variables */
 
-      if (pba->has_gbh_pt == _TRUE_) {
+      if (pba->has_gbh == _TRUE_) {
 
         if ((pa_old[ppw->index_gbh_fa] == (int)gbh_fa_off) && (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on)) {
           
-          if (ppt->perturbations_verbose>1){
+          if (ppt->perturbations_verbose>2){
             fprintf(stdout,"Mode k=%e: switch on gbh fluid approximation at tau=%e\n",k,tau);
             fflush(stdout);
           }
@@ -5350,10 +5384,13 @@ int perturbations_vector_init(
 
           ppv->y[ppv->index_pt_theta_gbh] =
             k*ppw->pv->y[ppw->pv->index_pt_Sigma_gbh];//theta=k\sigma_0,1
-
-          ppv->y[ppv->index_pt_sigma_gbh] =
-            ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+1];
-        
+          
+          if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+            ppv->y[ppv->index_pt_sigma_gbh] =
+              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+1];
+          
+          
+               
           
           
             
@@ -5700,7 +5737,12 @@ int perturbations_initial_conditions(struct precision * ppr,
   double delta_dr=0;
   double q,epsilon,k2;
   int index_q,n_ncdm,idx;
-  int n,ll; //GBH_pt
+  /*GBH_pt_start*/
+  int n,ll; 
+  double l_factorial = 1.,ll_1_double_factorial = 1.;//l_factorial =l!, ll_1_double_factorial = (2l-1)!!
+  double rho_delta_gbh = 0.0,rho_plus_p_shear_gbh = 0.0,factor,q2,a2;
+  double * Psi_gbh;
+  /*GBH_pt_end*/
   double rho_r,rho_m,rho_nu,rho_m_over_rho_r, rho_cdm =0.;
   double fracnu,fracg,fracb,fraccdm = 0.,fracidm = 0.;
   double om;
@@ -5914,7 +5956,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       /* all relativistic relics: ur, early ncdm, dr */
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_) || (pba->has_idr == _TRUE_)  || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_) || (pba->has_idr == _TRUE_)  || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur = ppw->pv->y[ppw->pv->index_pt_delta_g]; /* density of ultra-relativistic neutrinos/relics */
 
@@ -5967,7 +6009,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       ppw->pv->y[ppw->pv->index_pt_delta_cdm] = ppr->entropy_ini+3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g];
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur = ppw->pv->y[ppw->pv->index_pt_delta_g];
         theta_ur = ppw->pv->y[ppw->pv->index_pt_theta_g];
@@ -5999,7 +6041,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       }
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur = ppw->pv->y[ppw->pv->index_pt_delta_g];
         theta_ur = ppw->pv->y[ppw->pv->index_pt_theta_g];
@@ -6185,7 +6227,7 @@ int perturbations_initial_conditions(struct precision * ppr,
            +ppw->pvecback[pba->index_bg_phi_prime_scf]*alpha_prime);
       }
 
-      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_)  || (pba->has_idr == _TRUE_)  || (pba->has_gbh_pt == _TRUE_)) { //GBH_pt
+      if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_)  || (pba->has_idr == _TRUE_)  || (pba->has_gbh == _TRUE_)) { //GBH_pt
 
         delta_ur -= 4.*a_prime_over_a*alpha;
         theta_ur += k*k*alpha;
@@ -6251,27 +6293,75 @@ int perturbations_initial_conditions(struct precision * ppr,
     }
 
     /*GBH_pt_start*/
-      if (pba->has_gbh_pt == _TRUE_) {
+      if (pba->has_gbh == _TRUE_) {
         if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on){ 
           ppw->pv->y[ppw->pv->index_pt_delta_gbh] = delta_ur;
           ppw->pv->y[ppw->pv->index_pt_theta_gbh] = theta_ur;
-          ppw->pv->y[ppw->pv->index_pt_sigma_gbh] = shear_ur;
+          if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+            ppw->pv->y[ppw->pv->index_pt_sigma_gbh] = shear_ur;
         }
         else{
-          ppw->pv->y[ppw->pv->index_pt_Delta_gbh] = delta_ur / 3.; /* gbh density */
-          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh] = theta_ur / k;
-          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+1] = shear_ur;
-          ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+2] = l3_ur; //if you change this at some point, remember to change the for loop on ll in the next few lines
-          for(n=1;n<ppw->pv->n_max_gbh;n++)
+          a2=a*a;                    
+          factor = pba->factor_gbh/pow(a,4);
+          /*  Psi_gbh will contain the initial conditions for the gbh perturbations in momentum space, 
+          Psi_gbh = [Psi_0, Psi_1, Psi_2, Psi_3] for each momentum bin. */
+          class_alloc(Psi_gbh, 4 * pba->q_size_gbh * sizeof(double), ppt->error_message); // 4 is because we are setting f_n,l=0 for l>3. 
+          idx = 0;
+
+          for (index_q=0; index_q < pba->q_size_gbh; index_q ++) { //here define the gbh initial condition in momentum space
+
+            q = pba->q_gbh[index_q];
+            q2 = q*q;
+            epsilon = sqrt(q2+pba->M_gbh*pba->M_gbh*a2);
+
+            Psi_gbh[idx] = -0.25 * delta_ur * pba->dlnf0_dlnq_gbh[index_q];
+            Psi_gbh[idx+1] =  -epsilon/3./q/k*theta_ur* pba->dlnf0_dlnq_gbh[index_q];
+            Psi_gbh[idx+2] = -0.5 * shear_ur * pba->dlnf0_dlnq_gbh[index_q];
+            Psi_gbh[idx+3] = -0.25 * l3_ur * pba->dlnf0_dlnq_gbh[index_q];
+
+            //Jump to next momentum bin:
+            idx+=4;
+          }
+                    
+          for(n=0;n<ppw->pv->n_max_gbh;n++) //momentum integrals for gbh perturbations is only used once in the code, and it's here in this loop
           {
-            ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] =
-              ppw->pv->y[ppw->pv->index_pt_Delta_gbh];
+            rho_delta_gbh = 0.0;
+            idx = 0;
+            for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
+              q = pba->q_gbh[index_q];
+              q2 = q*q;
+              epsilon = sqrt(q2+pba->M_gbh*pba->M_gbh*a2);
+
+              rho_delta_gbh += q2*epsilon*pow(q/epsilon,2*n)*pba->weights_gbh[index_q]*Psi_gbh[idx];
+              //Jump to next momentum bin:
+              idx+=4;
+            }
+            rho_delta_gbh *= factor/3.;
+            ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] = rho_delta_gbh/ppw->pvecback[pba->index_bg_P_gbh]/3.;
+            
+            l_factorial = 1.;
+            ll_1_double_factorial = 1.;
             for(ll=1;ll<4;ll++)
             {
-              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh+ll-1] =
-                ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+ll-1];
+              l_factorial *= 1.*ll;
+              ll_1_double_factorial *= (2.*ll-1.);
+              rho_plus_p_shear_gbh = 0.0;
+              idx = 0;
+              for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
+                q = pba->q_gbh[index_q];
+                q2 = q*q;
+                epsilon = sqrt(q2+pba->M_gbh*pba->M_gbh*a2);
+
+                rho_plus_p_shear_gbh += q2*epsilon*pow(q/epsilon,2*n+ll)*pba->weights_gbh[index_q]*Psi_gbh[idx+ll];
+                //Jump to next momentum bin:
+                idx+=4;
+              }
+              rho_plus_p_shear_gbh *= l_factorial/ll_1_double_factorial*factor;
+              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh+ll-1] = rho_plus_p_shear_gbh/(3.*ppw->pvecback[pba->index_bg_P_gbh]+ppw->pvecback[pba->index_bg_P_gbh+1]);
               }
             }
+
+          free(Psi_gbh);
         }
       }
       /*GBH_pt_end*/
@@ -6425,6 +6515,66 @@ int perturbations_initial_conditions(struct precision * ppr,
 
   return _SUCCESS_;
 }
+
+
+
+
+
+
+
+/*ncdm_caio_FA*/
+/**
+ * Evaluate the functional form of shear, given neutrino horizon size, overdensity and velocity, and background quantities.
+ * This function is used whenever Caio's fluid approximation is demanded for either ncdm or GBH species.
+ * @param pba            Input: pointer to background structure
+ * @param ppt            Input: pointer to perturbations structure
+ * @param ceff2          Input/Output: effective sound speed squared
+ * @param sigma          Input/Output: shear
+ * @param w              Input: equation of state parameter
+ * @param lambda         Input: w_{-1}=P_{-1}/rho
+ * @param ca2            Input: adiabatic sound speed squared
+ * @param horizon        Input: horizon size = integral of free-streaming scale
+ * @param delta          Input: overdensity
+ * @param theta          Input: velocity
+ * @param a_prime_over_a Input: a'/a
+ * @param a              Input: scale factor
+ * @param k              Input: wavenumber
+*/
+int perturbations_shear_caio(
+                             struct background * pba,
+                             struct perturbations * ppt,
+                             double * ceff2_out,
+                             double * sigma,
+                             double w,
+                             double lambda,
+                             double ca2,
+                             double horizon,
+                             double delta,
+                             double theta,
+                             double a_prime_over_a,
+                             double a,
+                             double k
+                             ) {
+
+  double H = a_prime_over_a/a, k2 = k*k, k_fs, k_horizon;
+  double c2_asp = (1. + w) / (1. + lambda) / 3., c_eff2;
+  double Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
+  class_test(c2_asp<0., ppt->error_message,
+        "ncdm asymptotic sound speed squared is negative.");
+
+  k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp); 
+  k_horizon = 2. * _PI_ / horizon; 
+  
+  c_eff2 = ca2 + (c2_asp - ca2) * exp(-4. / 3. * k_fs / k);
+  if (ceff2_out != NULL)    
+    * ceff2_out = c_eff2;
+  * sigma = 1./k2 * (-2./5. * k_horizon / k * exp(-k_horizon / k) * c_eff2 / (1. + w) * k2 * delta + k / k_fs * exp(-5.*k_fs/k) * w * w * theta);
+  
+  return _SUCCESS_;
+}
+
+
+
 
 /**
  * Evaluate background/thermodynamics at \f$ \tau \f$, infer useful flags / time scales for integrating perturbations.
@@ -6657,11 +6807,10 @@ int perturbations_approximations(
       }
     }
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {//indicate when the transition from GBH to FA should happen
+    if (pba->has_gbh == _TRUE_) {//indicate when the transition from GBH to FA should happen
       //if (k > ppr->ubound_x_gbh/pba->gbh_horizon) { //if you use this condition instead, only x0=kT_0 will be used to switch to fluid approx.;
                                                       //so for a given k, there won't be any switching during integration 
-      if (k > ppr->ubound_x_gbh/ppw->pvecback[pba->index_bg_fs_gbh]) {
-      //if (tau/tau_k > ppr->ncdm_fluid_trigger_tau_over_tau_k){ // Murali Saravanan, 6/27
+      if (k > ppr->ubound_x_gbh/ppw->pvecback[pba->index_bg_app_horizon_gbh]) {
         ppw->approx[ppw->index_gbh_fa] = (int)gbh_fa_on;
       }
       else {
@@ -7186,7 +7335,8 @@ int perturbations_total_stress_energy(
   double rho_plus_p_ncdm;
   int index_q,n_ncdm,idx;
   double epsilon,q,q2,cg2_ncdm,w_ncdm,rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm;
-  double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,cg2_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
+  double sigma_ncdm,lambda_ncdm,ca2_ncdm; /*ncdm_caio_fa*/
+  double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,ca2_gbh,cg2_gbh,lambda_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
   double w_fld,dw_over_da_fld,integral_fld;
   double gwncdm;
   double rho_relativistic;
@@ -7461,13 +7611,56 @@ int perturbations_total_stress_energy(
           if ((ppt->has_source_delta_ncdm == _TRUE_) || (ppt->has_source_theta_ncdm == _TRUE_) || (ppt->has_source_delta_m == _TRUE_)) {
             ppw->delta_ncdm[n_ncdm] = y[idx];
             ppw->theta_ncdm[n_ncdm] = y[idx+1];
-            ppw->shear_ncdm[n_ncdm] = y[idx+2];
+            if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
+              ppw->shear_ncdm[n_ncdm] = y[idx+2];
+            else{/*ncdm_caio_fa*/
+              lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+              ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
+              class_call(perturbations_shear_caio(pba,
+                                                  ppt,
+                                                  NULL, 
+                                                  &sigma_ncdm, //this will be overwritten inside the function
+                                                  w_ncdm,
+                                                  lambda_ncdm,
+                                                  ca2_ncdm,
+                                                  ppw->pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
+                                                  y[idx],
+                                                  y[idx+1],
+                                                  a_prime_over_a,
+                                                  a,
+                                                  k
+                                                  ), 
+                         pba->error_message, ppt->error_message);
+              ppw->shear_ncdm[n_ncdm] = sigma_ncdm;
+            }          
           }
 
           ppw->delta_rho += rho_ncdm_bg*y[idx];
           ppw->rho_plus_p_theta += rho_plus_p_ncdm*y[idx+1];
-          ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
+          if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
+            ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
+          else{ /*ncdm_caio_fa*/
+            lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+            ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
+            class_call(perturbations_shear_caio(pba,
+                                                ppt,
+                                                NULL, 
+                                                &sigma_ncdm, //this will be overwritten inside the function
+                                                w_ncdm,
+                                                lambda_ncdm,
+                                                ca2_ncdm,
+                                                ppw->pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
+                                                y[idx],
+                                                y[idx+1],
+                                                a_prime_over_a,
+                                                a,
+                                                k
+                                                ), 
+                        pba->error_message, ppt->error_message);
+            ppw->rho_plus_p_shear += rho_plus_p_ncdm*sigma_ncdm; 
+          }
           ppw->delta_p += cg2_ncdm*rho_ncdm_bg*y[idx];
+          
 
           ppw->rho_plus_p_tot += rho_plus_p_ncdm;
 
@@ -7492,6 +7685,7 @@ int perturbations_total_stress_energy(
             rho_delta_ncdm += q2*epsilon*pba->w_ncdm[n_ncdm][index_q]*y[idx];
             rho_plus_p_theta_ncdm += q2*q*pba->w_ncdm[n_ncdm][index_q]*y[idx+1];
             rho_plus_p_shear_ncdm += q2*q2/epsilon*pba->w_ncdm[n_ncdm][index_q]*y[idx+2];
+
             delta_p_ncdm += q2*q2/epsilon*pba->w_ncdm[n_ncdm][index_q]*y[idx];
 
             //Jump to next momentum bin:
@@ -7535,17 +7729,37 @@ int perturbations_total_stress_energy(
     }
 
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
       rho_gbh = 3.*ppw->pvecback[pba->index_bg_P_gbh];
       p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1];
       rho_plus_p_gbh = rho_gbh + p_gbh;
-      w_gbh = p_gbh/rho_gbh;
 
       if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on){
         delta_gbh = y[ppw->pv->index_pt_delta_gbh];
         theta_gbh = y[ppw->pv->index_pt_theta_gbh];
-        sigma_gbh = y[ppw->pv->index_pt_sigma_gbh]; 
+        w_gbh = p_gbh/rho_gbh;
         pseudo_p_gbh = ppw->pvecback[pba->index_bg_P_gbh+2];
+        if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+          sigma_gbh = y[ppw->pv->index_pt_sigma_gbh]; 
+        else{
+          lambda_gbh = ppw->pvecback[pba->index_bg_P_min1_gbh] / rho_gbh;
+          ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */ 
+          class_call(perturbations_shear_caio(pba,
+                                              ppt,
+                                              NULL, 
+                                              &sigma_gbh, //this will be overwritten inside the function
+                                              w_gbh,
+                                              lambda_gbh,
+                                              ca2_gbh,
+                                              ppw->pvecback[pba->index_bg_horizon_gbh],
+                                              delta_gbh,
+                                              theta_gbh,
+                                              a_prime_over_a,
+                                              a,
+                                              k
+                                              ), 
+                      pba->error_message, ppt->error_message);
+        }
         cg2_gbh = w_gbh*(1.0-1.0/(3.0+3.0*w_gbh)*(3.0*w_gbh-2.0+pseudo_p_gbh/p_gbh));
         ppw->delta_p += cg2_gbh*rho_gbh*delta_gbh; //GBH_backreaction   
       } 
@@ -8354,7 +8568,7 @@ int perturbations_sources(
 
     /*GBH_pt_start*/
     /* gbh */
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
     if (ppt->has_source_delta_gbh == _TRUE_) {
       if (ppw->approx[ppw->index_gbh_fa]==(int)gbh_fa_on) {
         _set_source_(ppt->index_tp_delta_gbh) = y[ppw->pv->index_pt_delta_gbh]
@@ -8482,7 +8696,7 @@ int perturbations_sources(
 
     /*GBH_pt_start*/
     /* theta_gbh */
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
     if (ppt->has_source_theta_gbh == _TRUE_) {
       if (ppw->approx[ppw->index_gbh_fa]==(int)gbh_fa_on) {
         _set_source_(ppt->index_tp_theta_gbh) = y[ppw->pv->index_pt_theta_gbh]
@@ -8600,6 +8814,7 @@ int perturbations_print_variables(double tau,
   int n_ncdm;
   double *delta_ncdm=NULL, *theta_ncdm=NULL, *shear_ncdm=NULL, *delta_p_over_delta_rho_ncdm=NULL;
   double rho_ncdm_bg, p_ncdm_bg, pseudo_p_ncdm, w_ncdm;
+  double lambda_ncdm,ca2_ncdm; /*ncdm_caio_fa*/
   double rho_delta_ncdm = 0.0;
   double rho_plus_p_theta_ncdm = 0.0;
   double rho_plus_p_shear_ncdm = 0.0;
@@ -8608,7 +8823,8 @@ int perturbations_print_variables(double tau,
   double q,q2,epsilon;
   /** - ncdm sector ends */
   double delta_gbh, delta1_gbh, theta_gbh, theta1_gbh, sigma_gbh, sigma1_gbh; //GBH_pt
-  double phi=0.,psi=0.,alpha=0.;
+  double rho_gbh, p_gbh, pseudo_p_gbh, w_gbh, lambda_gbh, ca2_gbh; //GBH_pt
+  double phi=0.,psi=0.,phi_prime=0.,alpha=0.; //GBH_pt_print
   double delta_temp=0., delta_chi=0.;
 
   double a,a2,H;
@@ -8669,6 +8885,7 @@ int perturbations_print_variables(double tau,
   a = pvecback[pba->index_bg_a];
   a2 = a*a;
   H = pvecback[pba->index_bg_H];
+  
 
   if (pba->has_ncdm == _TRUE_){
     class_alloc(delta_ncdm, sizeof(double)*pba->N_ncdm,error_message);
@@ -8784,14 +9001,17 @@ int perturbations_print_variables(double tau,
 
       psi = pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a] * alpha + pvecmetric[ppw->index_mt_alpha_prime];
       phi = y[ppw->pv->index_pt_eta] - pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
+      phi_prime = 0.; //GBH_pt_print
     }
     else if (ppt->gauge == newtonian){
       psi = pvecmetric[ppw->index_mt_psi];
       phi = y[ppw->pv->index_pt_phi];
+      phi_prime = pvecmetric[ppw->index_mt_phi_prime];//GBH_pt_print
     }
     else{
       psi = 0.0;
       phi = 0.0;
+      phi_prime = 0.0; //GBH_pt_print
     }
 
     if (pba->has_ncdm == _TRUE_) {
@@ -8807,7 +9027,27 @@ int perturbations_print_variables(double tau,
 
           delta_ncdm[n_ncdm] = y[idx];
           theta_ncdm[n_ncdm] = y[idx+1];
-          shear_ncdm[n_ncdm] = y[idx+2];
+          if(ppr->ncdm_fluid_approximation != ncdmfa_caio)  
+            shear_ncdm[n_ncdm] = y[idx+2];
+          else{ /*ncdm_caio_fa*/
+            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+            ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
+            class_call(perturbations_shear_caio(pba,
+                                                ppt,
+                                                NULL, 
+                                                &shear_ncdm[n_ncdm], //this will be overwritten inside the function
+                                                w_ncdm,
+                                                lambda_ncdm,
+                                                ca2_ncdm,
+                                                ppw->pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
+                                                delta_ncdm[n_ncdm],
+                                                theta_ncdm[n_ncdm],
+                                                a * H,
+                                                a,
+                                                k
+                                                ), 
+                         pba->error_message, ppt->error_message);
+          }
           //This is the adiabatic sound speed:
           delta_p_over_delta_rho_ncdm[n_ncdm] = w_ncdm*(1.0-1.0/(3.0+3.0*w_ncdm)*(3.0*w_ncdm-2.0+pseudo_p_ncdm/p_ncdm_bg));
           idx += ppw->pv->l_max_ncdm[n_ncdm]+1;
@@ -8854,11 +9094,35 @@ int perturbations_print_variables(double tau,
     }
 
     /*GBH_pt_start*/
-    if (pba->has_gbh_pt == _TRUE_) {
+    if (pba->has_gbh == _TRUE_) {
       if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on){
         delta_gbh = y[ppw->pv->index_pt_delta_gbh];
         theta_gbh = y[ppw->pv->index_pt_theta_gbh];
-        sigma_gbh = y[ppw->pv->index_pt_sigma_gbh];
+        if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+          sigma_gbh = y[ppw->pv->index_pt_sigma_gbh];
+        else{
+             rho_gbh = 3.*ppw->pvecback[pba->index_bg_P_gbh];
+             p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1];
+             w_gbh = p_gbh/rho_gbh;
+             lambda_gbh = ppw->pvecback[pba->index_bg_P_min1_gbh] / rho_gbh;
+             pseudo_p_gbh = ppw->pvecback[pba->index_bg_P_gbh+2]; /* pseudo-pressure (see CLASS IV paper) */
+             ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */
+             class_call(perturbations_shear_caio(pba,
+                                                 ppt,
+                                                 NULL, 
+                                                 &sigma_gbh, //this will be overwritten inside the function
+                                                 w_gbh,
+                                                 lambda_gbh,
+                                                 ca2_gbh,
+                                                 ppw->pvecback[pba->index_bg_horizon_gbh], 
+                                                 delta_gbh,
+                                                 theta_gbh,
+                                                 a * H,
+                                                 a,
+                                                 k
+                                                 ), 
+                         pba->error_message, ppt->error_message);
+        }
         delta1_gbh=0.;
         theta1_gbh=0.; 
         sigma1_gbh=0.;  
@@ -8953,7 +9217,7 @@ int perturbations_print_variables(double tau,
         }
       }
 
-      if (pba->has_gbh_pt == _TRUE_) {
+      if (pba->has_gbh == _TRUE_) {
         
         /** - --> TODO: gauge transformation of delta, deltaP/rho (?) and theta using -= 3aH(1+w_ncdm) alpha for delta. */
         
@@ -9001,6 +9265,7 @@ int perturbations_print_variables(double tau,
     class_store_double(dataptr, theta_b, _TRUE_, storeidx);
     class_store_double(dataptr, psi, _TRUE_, storeidx);
     class_store_double(dataptr, phi, _TRUE_, storeidx);
+    class_store_double(dataptr, phi_prime, _TRUE_, storeidx); //GBH_pt_print
     /* perturbed recombination */
     class_store_double(dataptr, delta_temp, ppt->has_perturbed_recombination, storeidx);
     class_store_double(dataptr, delta_chi, ppt->has_perturbed_recombination, storeidx);
@@ -9029,12 +9294,12 @@ int perturbations_print_variables(double tau,
       }
     }
     /*GBH_pt_start*/
-    class_store_double(dataptr, delta_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, delta1_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, theta_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, theta1_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, sigma_gbh, pba->has_gbh_pt, storeidx);
-    class_store_double(dataptr, sigma1_gbh, pba->has_gbh_pt, storeidx);
+    class_store_double(dataptr, delta_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, delta1_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, theta_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, theta1_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, sigma_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, sigma1_gbh, pba->has_gbh, storeidx);
     /*GBH_pt_end*/
     /* Decaying cold dark matter */
     class_store_double(dataptr, delta_dcdm, pba->has_dcdm, storeidx);
@@ -9220,7 +9485,7 @@ int perturbations_derivs(double tau,
   int l;
 
   /* scale factor and other background quantities */
-  double a,a2,a_prime_over_a,R;
+  double a,a2,a_prime_over_a,R,rho_crit;
 
   /* short-cut names for the fields of the input structure */
   struct perturbations_parameters_and_workspace * pppaw;
@@ -9270,9 +9535,15 @@ int perturbations_derivs(double tau,
   int index_q,n_ncdm,idx;
   double q,epsilon,dlnf0_dlnq,qk_div_epsilon;
   double rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm,w_ncdm,ca2_ncdm,ceff2_ncdm=0.,cvis2_ncdm=0.;
+  /*ncdm_caio_fa*/
+  double lambda_ncdm,sigma_ncdm;
 
   /* for GBH species*/
-  double w_gbh,p_gbh,pseudo_p_gbh,ca2_gbh,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; //GBH_pt
+  /*GBH_pt_start*/ 
+  double w_gbh,rho_gbh,p_gbh,pseudo_p_gbh,ca2_gbh,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; 
+  double lambda_gbh,sigma_gbh;
+  double * w;
+  /*GBH_pt_end*/ 
 
   /* for use with curvature */
   double cotKgen, sqrt_absK;
@@ -9341,6 +9612,7 @@ int perturbations_derivs(double tau,
   a = pvecback[pba->index_bg_a];
   a2 = a*a;
   a_prime_over_a = pvecback[pba->index_bg_H] * a;
+  rho_crit = pvecback[pba->index_bg_rho_crit]; //GBH_pt
   R = 4./3. * pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
 
   photon_scattering_rate = pvecthermo[pth->index_th_dkappa];
@@ -9505,6 +9777,7 @@ int perturbations_derivs(double tau,
 
     /* start with idm as it might be needed during (normal) tca  */
     if (pba->has_idm == _TRUE_){
+
       dy[pv->index_pt_delta_idm] = -(theta_idm+metric_continuity); /* idm density */
       dy[pv->index_pt_theta_idm] =
         -a_prime_over_a*theta_idm
@@ -9711,6 +9984,7 @@ int perturbations_derivs(double tau,
     /** - ---> cdm */
 
     if (pba->has_cdm == _TRUE_) {
+      
 
       /** - ----> newtonian gauge: cdm density and velocity */
 
@@ -9797,6 +10071,7 @@ int perturbations_derivs(double tau,
     /** - ---> dcdm and dr */
 
     if (pba->has_dcdm == _TRUE_) {
+      
 
       /** - ----> dcdm */
 
@@ -9901,6 +10176,7 @@ int perturbations_derivs(double tau,
     /** - ---> ultra-relativistic neutrino/relics (ur) */
 
     if (pba->has_ur == _TRUE_) {
+      
 
       /** - ----> if radiation streaming approximation is off */
 
@@ -10003,6 +10279,7 @@ int perturbations_derivs(double tau,
           pseudo_p_ncdm = pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm]; /* pseudo-pressure (see CLASS IV paper) */
           w_ncdm = p_ncdm_bg/rho_ncdm_bg; /* equation of state parameter */
           ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */
+          
 
           /* c_eff is (delta p / delta rho) in the gauge under
              consideration (not in the gauge comoving with the
@@ -10014,14 +10291,36 @@ int perturbations_derivs(double tau,
           if (ppr->ncdm_fluid_approximation == ncdmfa_mb) {
             ceff2_ncdm = ca2_ncdm;
             cvis2_ncdm = 3.*w_ncdm*ca2_ncdm;
+            sigma_ncdm = y[idx+2];
           }
           if (ppr->ncdm_fluid_approximation == ncdmfa_hu) {
             ceff2_ncdm = ca2_ncdm;
             cvis2_ncdm = w_ncdm;
+            sigma_ncdm = y[idx+2];
           }
           if (ppr->ncdm_fluid_approximation == ncdmfa_CLASS) {
             ceff2_ncdm = ca2_ncdm;
             cvis2_ncdm = 3.*w_ncdm*ca2_ncdm;
+            sigma_ncdm = y[idx+2];
+          }
+          /*ncdm_caio_fa*/
+          if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
+            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg; 
+            class_call(perturbations_shear_caio(pba,
+                                                ppt,
+                                                &ceff2_ncdm, //this will be overwritten inside the function
+                                                &sigma_ncdm, //this will be overwritten inside the function
+                                                w_ncdm,
+                                                lambda_ncdm,
+                                                ca2_ncdm,
+                                                pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
+                                                y[idx],
+                                                y[idx+1],
+                                                a_prime_over_a,
+                                                a,
+                                                k
+                                                ), 
+                       pba->error_message, ppt->error_message);
           }
 
           /** - -----> exact continuity equation */
@@ -10032,7 +10331,7 @@ int perturbations_derivs(double tau,
           /** - -----> exact euler equation */
 
           dy[idx+1] = -a_prime_over_a*(1.0-3.0*ca2_ncdm)*y[idx+1]+
-            ceff2_ncdm/(1.0+w_ncdm)*k2*y[idx]-k2*y[idx+2]
+            ceff2_ncdm/(1.0+w_ncdm)*k2*y[idx]-k2*sigma_ncdm
             + metric_euler;
 
           /** - -----> different ansatz for approximate shear derivative */
@@ -10055,6 +10354,12 @@ int perturbations_derivs(double tau,
 
             dy[idx+2] = -3.0*(a_prime_over_a*(2./3.-ca2_ncdm-pseudo_p_ncdm/p_ncdm_bg/3.)+1./tau)*y[idx+2]
               +8.0/3.0*cvis2_ncdm/(1.0+w_ncdm)*s_l[2]*(y[idx+1]+metric_ufa_class);
+
+          }
+          /*ncdm_caio_fa*/
+          if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
+
+            dy[idx+2] = 0.0; //instead of removing this index from the system, I am setting it to a constant, equal to its value at the transition from Boltzmann hierarchy to fluid approximation
 
           }
 
@@ -10117,17 +10422,20 @@ int perturbations_derivs(double tau,
     }
 
     /*GBH_pt_start*/ 
-    if(pba->has_gbh_pt == _TRUE_){
+    if(pba->has_gbh == _TRUE_){
       int N = pv->n_max_gbh+pv->l_max_gbh+1,ll,n;
-      double w[N];
+      class_alloc(w,sizeof(double)*N,ppt->error_message);
+
       if (ppt->gauge == newtonian) {
         
         if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_on) {//fluid approximation eqs go here
         /** - -----> define intermediate quantitites */
+        rho_gbh = 3.*pvecback[pba->index_bg_P_gbh]; /* background density */
         p_gbh = pvecback[pba->index_bg_P_gbh+1];
         pseudo_p_gbh = pvecback[pba->index_bg_P_gbh+2]; /* pseudo-pressure (see CLASS IV paper) */
-        w_gbh = p_gbh/pvecback[pba->index_bg_P_gbh]/3.; /* equation of state parameter */
+        w_gbh = p_gbh/rho_gbh; /* equation of state parameter */
         ca2_gbh = w_gbh/3.0/(1.0+w_gbh)*(5.0-pseudo_p_gbh/p_gbh); /* adiabatic sound speed */
+        
 
         /* c_eff is (delta p / delta rho) in the gauge under
             consideration (not in the gauge comoving with the
@@ -10139,14 +10447,37 @@ int perturbations_derivs(double tau,
         if (ppr->gbh_fluid_approximation == gbh_fa_mb) {
           ceff2_gbh = ca2_gbh;
           cvis2_gbh = 3.*w_gbh*ca2_gbh;
+          sigma_gbh=y[pv->index_pt_sigma_gbh];
         }
         if (ppr->gbh_fluid_approximation == gbh_fa_hu) {
           ceff2_gbh = ca2_gbh;
           cvis2_gbh = w_gbh;
+          sigma_gbh=y[pv->index_pt_sigma_gbh];
         }
         if (ppr->gbh_fluid_approximation == gbh_fa_CLASS) {
           ceff2_gbh = ca2_gbh;
           cvis2_gbh = 3.*w_gbh*ca2_gbh;
+          sigma_gbh=y[pv->index_pt_sigma_gbh];
+          
+        }
+        if (ppr->gbh_fluid_approximation == gbh_fa_caio) {
+          lambda_gbh = pvecback[pba->index_bg_P_min1_gbh] / rho_gbh; /*w_{-1} of gbh species*/
+          class_call(perturbations_shear_caio(pba,
+                                              ppt,        //just for keeping track of error messages
+                                              &ceff2_gbh, //this will be overwritten inside the function
+                                              &sigma_gbh, //this will be overwritten inside the function
+                                              w_gbh,
+                                              lambda_gbh,
+                                              ca2_gbh,
+                                              pvecback[pba->index_bg_horizon_gbh], 
+                                              y[pv->index_pt_delta_gbh],
+                                              y[pv->index_pt_theta_gbh],
+                                              a_prime_over_a,
+                                              a,
+                                              k
+                                              ), 
+                       pba->error_message, ppt->error_message);
+          
         }
 
         /** - -----> exact continuity equation */
@@ -10158,7 +10489,7 @@ int perturbations_derivs(double tau,
         //         "test Error delta: y is non zero. a=%e, k=%e",a,k)}
         /** - -----> exact euler equation */
 
-        dy[pv->index_pt_theta_gbh] = -a_prime_over_a*(1.0-3.0*ca2_gbh)*y[pv->index_pt_theta_gbh]+ceff2_gbh/(1.0+w_gbh)*k2*y[pv->index_pt_delta_gbh]-k2*y[pv->index_pt_sigma_gbh]+ metric_euler;
+        dy[pv->index_pt_theta_gbh] = -a_prime_over_a*(1.0-3.0*ca2_gbh)*y[pv->index_pt_theta_gbh]+ceff2_gbh/(1.0+w_gbh)*k2*y[pv->index_pt_delta_gbh]-k2*sigma_gbh+ metric_euler;
 
         /** - -----> different ansatz for approximate shear derivative */
 
@@ -10180,6 +10511,8 @@ int perturbations_derivs(double tau,
 
         }
         
+        
+
         }
         else{//GBH eqs 
           //printf("\nhello world\n");//test
@@ -10250,6 +10583,7 @@ int perturbations_derivs(double tau,
         printf("\n!!WARNING!!: You are using synchronous gauge. GBH has been implemented on Newtonian gauge only.\n");
       }
     
+      free(w);
 
     }
 

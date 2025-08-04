@@ -107,7 +107,7 @@ struct background
 
   /*GBH_bg_start*/
   int last_index_gbh;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
-  int gbh_use_table;        /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 1*/
+  int gbh_use_table;        /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
   int n_max_gbh;            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0. This is given by user */ 
   double M_gbh;             /**< mass of gbh species in eV */
   double N_gbh;             /**< number of gbh species */
@@ -196,14 +196,20 @@ struct background
   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
   int index_bg_rho_scf;       /**< scalar field energy density */
   int index_bg_p_scf;         /**< scalar field pressure */
-  int index_bg_p_prime_scf;         /**< scalar field pressure */
+  int index_bg_p_prime_scf;   /**< scalar field pressure */
 
+  int index_bg_P_min1_ncdm1;  /**< P_{-1} of first ncdm species (others contiguous) */
   int index_bg_rho_ncdm1;     /**< density of first ncdm species (others contiguous) */
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
   int index_bg_pseudo_p_ncdm1;/**< another statistical momentum useful in ncdma approximation */
 
+  /*ncdm_caio_fa*/
+  int index_bg_horizon_ncdm1; /**< horizon scale of first ncdm species (others contiguous) */
+
+  int index_bg_P_min1_gbh;    /**< P_{-1} of species in GBH, from quadrature integration*/   //GBH_bg
   int index_bg_P_gbh;         /**< density of species in GBH*/   //GBH_bg
-  int index_bg_fs_gbh;        /**< free streaming distance of species in GBH*/   //GBH_pt
+  int index_bg_app_horizon_gbh;     /**< approximate comoving horizon distance of species in GBH*/   //GBH_pt
+  int index_bg_horizon_gbh;   /**< comoving horizon distance of species in GBH*/   //GBH_pt
 
   int index_bg_rho_tot;       /**< Total density */
   int index_bg_p_tot;         /**< Total pressure */
@@ -282,7 +288,9 @@ struct background
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
-  int index_bi_fs_gbh;  /**< {C} free streaming distance in Mpc for gbh */
+  int index_bi_horizon_ncdm1; /**< {C} horizon distance in Mpc for first ncdm species (others contiguous) */
+  int index_bi_app_horizon_gbh;  /**< {C} approximate horizon distance in Mpc for gbh */
+  int index_bi_horizon_gbh;   /**< {C} horizon distance in Mpc for gbh */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
   int index_bi_D_prime; /**< {C} D satisfies \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$ */
 
@@ -307,8 +315,7 @@ struct background
   short has_dr;        /**< presence of relativistic decay radiation? */
   short has_scf;       /**< presence of a scalar field? */
   short has_ncdm;      /**< presence of non-cold dark matter? */
-  short has_gbh;       /**< presence of gbh at background? */  //GBH_bg
-  short has_gbh_pt;    /**< presence of gbh at perturbations? */  //GBH_pt
+  short has_gbh;       /**< presence of gbh? */  //GBH_bg
   short has_lambda;    /**< presence of cosmological constant? */
   short has_fld;       /**< presence of fluid with constant w and cs2? */
   short has_ur;        /**< presence of ultra-relativistic neutrinos/relics? */
@@ -354,8 +361,25 @@ struct background
   int n_max_gbh_table;
 
   //@}
-  /*GBH_bg_end*/
 
+    /**
+   *@name - arrays related to sampling and integration of gbh phase space distributions
+   */
+
+  //@{
+
+  int gbh_quadrature_strategy; /**< Vector of integers according to quadrature strategy. */
+  double * q_gbh_bg;           /**< Pointers to vectors of background sampling in q */
+  double * weights_gbh_bg;     /**< Pointers to vectors of corresponding quadrature weights w */
+  double * dlnf0_dlnq_gbh;     /**< Pointers to vectors of logarithmic derivatives of p-s-d */
+  double * q_gbh;              /**< Pointers to vectors of perturbation sampling in q */
+  double * weights_gbh;        /**< Pointers to vectors of corresponding quadrature weights w */
+  int q_size_gbh_bg;           /**< Size of the q_gbh_bg array */
+  int q_size_gbh;              /**< Size of the q_gbh array */
+  double factor_gbh;           /**< normalization factor for calculating energy density etc.*/
+
+  //@}
+  /*GBH_bg_end*/
 
 
 
@@ -518,6 +542,21 @@ extern "C" {
                            struct precision *ppr,
                            struct background *pba
                            );
+
+  int background_gbh_momenta(
+                              double * qvec,
+                              double * wvec,
+                              int qsize,
+                              double M,
+                              double factor,
+                              double z,
+                              double * n,
+                              double * rho,
+                              double * p,
+                              double * P_min1,
+                              double  *P_n,     //higher pressure moments 
+                              int n_max_gbh 
+                              );
   /*GBH_bg_end*/                           
 
   int background_ncdm_momenta(
@@ -531,7 +570,8 @@ extern "C" {
                               double * rho,
                               double * p,
                               double * drho_dM,
-                              double * pseudo_p
+                              double * pseudo_p,
+                              double * p_min1 /*ncdm_caio_fa*/
                               );
 
   int background_ncdm_M_from_Omega(

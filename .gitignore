@@ -3,7 +3,6 @@ output/
 build/
 class
 *.prof
-*.ini
 libclass.a
 *out
 python/classy.cpp
@@ -14,3 +13,27 @@ RealSpaceInterface/cache/
 .DS_Store
 doc/manual/html
 doc/manual/latex
+delta_vs_tau_k=1e-1.pdf
+delta_vs_tau_k=1e-2.pdf
+delta_vs_tau_k=1e-3.pdf
+delta_vs_tau_k=3e-3.pdf
+error_delta_vs_tau_k=1e-1.pdf
+error_delta_vs_tau_k=1e-2.pdf
+error_delta_vs_tau_k=3e-3.pdf
+error_in_rho.pdf
+error_in_w.pdf
+conformal_time_vs_a.pdf
+scale factor.pdf
+sigma_vs_tau_k=1e-1.pdf
+vg.log
+vg.log.core.3237627
+vgcore.3235730
+bg_pt_check.ipynb
+error_in_w.pdf
+error_in_w.pdf
+error_in_rho.pdf
+python/dist/classy-3.2.3-py3.7-linux-x86_64.egg
+python/classy.cpython-37m-x86_64-linux-gnu.so
+bg_pt_check.ipynb
+conformal_time_vs_a.pdf
+python/dist/classy-3.2.3-py3.7-linux-x86_64.egg
