@@ -552,7 +552,7 @@ int background_functions(
     if (pba->gbh_use_table == 1){
       current_x_value = pba->M_gbh * a;
       // Interpolate `rho` for GBH from the saved array of pre-computed values
-      if(current_x_value<=100.)
+      if(current_x_value<=1000.)
       {
         class_call(array_interpolate_spline(
                                             pba->x_gbh_bg,
@@ -596,7 +596,7 @@ int background_functions(
     
       class_alloc(interpolated_w_n, sizeof(double) * (pba->n_max_gbh+1), pba->error_message);
       // Interpolate `w_n` for GBH from the saved array of pre-computed values
-      if(current_x_value<=100.)
+      if(current_x_value<=1000.)
       {
       class_call(array_interpolate_spline(
                                           pba->x_gbh_bg,
@@ -614,7 +614,7 @@ int background_functions(
       else{
             for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) 
             {
-              interpolated_w_n[n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(100./current_x_value,2*n_gbh);
+              interpolated_w_n[n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(1000./current_x_value,2*n_gbh);
             }
       }
       for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) //interact with the pre-computed table of w_n's here
