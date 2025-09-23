@@ -142,3 +142,7 @@ DONE 55. remove index_bg_lambda_gbh and index_bg_Pminus1_gbh. They are not used 
 57. if the code is slow, look at the perturbations initial condition for gbh, where I integrate in momentum space. find a way to speed it up.
 58. For the case pba->gbh_use_table == 1, also provide a table for P_{-1}, so we wouldnt need quadrature in the background
 59. change 1000. in interpolation (both in input.c and background.c) to some precision parameter, that also needs to be input together with the file
+DONE 60. for sync gauge, change FA
+61. for sync gauge, change trunc scheme
+62. for sync gauge, change init conditions
+63. check whether in presence of fld, caio fluid approximation with sync gauge still works fine (finds correct sigma_ncdm or gbh)
