@@ -2847,16 +2847,6 @@ int input_read_parameters_species(struct file_content * pfc,
       pba->Omega0_gbh = rho_gbh / pow(pba->H0,2);
     }
     /*GBH_bg_end*/
-    /*GBH_pt_start*/
-    /** 7.0.5) the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
-    class_call(parser_read_double(pfc,"ubound_x_gbh",&param1,&flag1,errmsg),
-              errmsg,
-              errmsg);
-    /* Complete set of parameters */
-    if (flag1 == _TRUE_){
-      ppr->ubound_x_gbh = param1; 
-    }
-    /*GBH_pt_end*/
 
  }
 

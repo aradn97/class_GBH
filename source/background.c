@@ -1092,10 +1092,11 @@ int background_free_input(
   if(pba->has_gbh == _TRUE_){
     free(pba->q_gbh_bg);
     free(pba->weights_gbh_bg);
-    free(pba->dlnf0_dlnq_gbh);
-
+  
+    free(pba->dlnf0_dlnq_gbh); //GBH_pt
     free(pba->q_gbh); //GBH_pt
     free(pba->weights_gbh); //GBH_pt
+  
 
     if(pba->gbh_use_table == 1){
       free(pba->x_gbh_bg);
@@ -1921,27 +1922,32 @@ int background_gbh_init(
   pbadist.f0         = NULL;
   pbadist.d2f0       = NULL;
   pbadist.last_index = 0;
-  
-  class_alloc(pba->q_gbh,_QUADRATURE_MAX_*sizeof(double),pba->error_message);
-  class_alloc(pba->weights_gbh,_QUADRATURE_MAX_*sizeof(double),pba->error_message);
-  class_call(get_qsampling(pba->q_gbh,
-                               pba->weights_gbh,
-                               &(pba->q_size_gbh),
-                               _QUADRATURE_MAX_,
-                               ppr->tol_gbh, 
-                               pbadist.q,
-                               pbadist.tablesize,
-                               background_ncdm_test_function, // also the test function is the same as ncdm
-                               background_gbh_distribution,
-                               &pbadist,
-                               pba->error_message),
-                 pba->error_message,
-                 pba->error_message);
-  class_realloc(pba->q_gbh,pba->q_size_gbh*sizeof(double), pba->error_message);
-  class_realloc(pba->weights_gbh,pba->q_size_gbh*sizeof(double), pba->error_message);
 
-  if (pba->background_verbose > 0) {
-    printf("GBH species sampled with %d points (for perturbations integration)\n", pba->q_size_gbh);
+  pba->q_gbh=NULL; //these will only be allocated if in perturbations.c, we're integrating in q space using quadrature to set the initial conditions
+  pba->weights_gbh=NULL;
+  pba->dlnf0_dlnq_gbh=NULL;
+  if (ppr->gbh_init_condition_integrate==_TRUE_){
+    class_alloc(pba->q_gbh,_QUADRATURE_MAX_*sizeof(double),pba->error_message);
+    class_alloc(pba->weights_gbh,_QUADRATURE_MAX_*sizeof(double),pba->error_message);
+    class_call(get_qsampling(pba->q_gbh,
+                                pba->weights_gbh,
+                                &(pba->q_size_gbh),
+                                _QUADRATURE_MAX_,
+                                ppr->tol_gbh, 
+                                pbadist.q,
+                                pbadist.tablesize,
+                                background_ncdm_test_function, // also the test function is the same as ncdm
+                                background_gbh_distribution,
+                                &pbadist,
+                                pba->error_message),
+                  pba->error_message,
+                  pba->error_message);
+    class_realloc(pba->q_gbh,pba->q_size_gbh*sizeof(double), pba->error_message);
+    class_realloc(pba->weights_gbh,pba->q_size_gbh*sizeof(double), pba->error_message);
+
+    if (pba->background_verbose > 0) {
+      printf("GBH species sampled with %d points (for perturbations integration)\n", pba->q_size_gbh);
+    }
   }
   
   
@@ -1968,47 +1974,49 @@ int background_gbh_init(
     printf("GBH species sampled with %d points (for background integration)\n", pba->q_size_gbh_bg);
   }
 
-  class_alloc(pba->dlnf0_dlnq_gbh,
-              pba->q_size_gbh*sizeof(double),
-              pba->error_message);
+  if (ppr->gbh_init_condition_integrate==_TRUE_){
+    class_alloc(pba->dlnf0_dlnq_gbh,
+                pba->q_size_gbh*sizeof(double),
+                pba->error_message);
 
-  for (index_q=0; index_q<pba->q_size_gbh; index_q++) {
-    q = pba->q_gbh[index_q];
-    class_call(background_gbh_distribution(&pbadist,q,&f0),
-                pba->error_message,pba->error_message);
-
-    //Loop to find appropriate dq:
-    for (tolexp=_PSD_DERIVATIVE_EXP_MIN_; tolexp<_PSD_DERIVATIVE_EXP_MAX_; tolexp++) {
-
-      if (index_q == 0) {
-        dq = MIN((0.5-ppr->smallest_allowed_variation)*q,2*exp(tolexp)*(pba->q_gbh[index_q+1]-q));
-      }
-      else if (index_q == pba->q_size_gbh-1) {
-        dq = exp(tolexp)*2.0*(pba->q_gbh[index_q]-pba->q_gbh[index_q-1]);
-      }
-      else{
-        dq = exp(tolexp)*(pba->q_gbh[index_q+1]-pba->q_gbh[index_q-1]);
-      }
-
-      class_call(background_gbh_distribution(&pbadist,q-2*dq,&f0m2),
-                  pba->error_message,pba->error_message);
-      class_call(background_gbh_distribution(&pbadist,q+2*dq,&f0p2),
+    for (index_q=0; index_q<pba->q_size_gbh; index_q++) {
+      q = pba->q_gbh[index_q];
+      class_call(background_gbh_distribution(&pbadist,q,&f0),
                   pba->error_message,pba->error_message);
 
-      if (fabs((f0p2-f0m2)/f0)>sqrt(ppr->smallest_allowed_variation)) break;
+      //Loop to find appropriate dq:
+      for (tolexp=_PSD_DERIVATIVE_EXP_MIN_; tolexp<_PSD_DERIVATIVE_EXP_MAX_; tolexp++) {
+
+        if (index_q == 0) {
+          dq = MIN((0.5-ppr->smallest_allowed_variation)*q,2*exp(tolexp)*(pba->q_gbh[index_q+1]-q));
+        }
+        else if (index_q == pba->q_size_gbh-1) {
+          dq = exp(tolexp)*2.0*(pba->q_gbh[index_q]-pba->q_gbh[index_q-1]);
+        }
+        else{
+          dq = exp(tolexp)*(pba->q_gbh[index_q+1]-pba->q_gbh[index_q-1]);
+        }
+
+        class_call(background_gbh_distribution(&pbadist,q-2*dq,&f0m2),
+                    pba->error_message,pba->error_message);
+        class_call(background_gbh_distribution(&pbadist,q+2*dq,&f0p2),
+                    pba->error_message,pba->error_message);
+
+        if (fabs((f0p2-f0m2)/f0)>sqrt(ppr->smallest_allowed_variation)) break;
+      }
+
+      class_call(background_gbh_distribution(&pbadist,q-dq,&f0m1),
+                  pba->error_message,pba->error_message);
+      class_call(background_gbh_distribution(&pbadist,q+dq,&f0p1),
+                  pba->error_message,pba->error_message);
+      //5 point estimate of the derivative:
+      df0dq = (+f0m2-8*f0m1+8*f0p1-f0p2)/12.0/dq;
+      //Avoid underflow in extreme tail:
+      if (fabs(f0)==0.)
+        pba->dlnf0_dlnq_gbh[index_q] = -q; /* valid for whatever f0 with exponential tail in exp(-q) */
+      else
+        pba->dlnf0_dlnq_gbh[index_q] = q/f0*df0dq;
     }
-
-    class_call(background_gbh_distribution(&pbadist,q-dq,&f0m1),
-                pba->error_message,pba->error_message);
-    class_call(background_gbh_distribution(&pbadist,q+dq,&f0p1),
-                pba->error_message,pba->error_message);
-    //5 point estimate of the derivative:
-    df0dq = (+f0m2-8*f0m1+8*f0p1-f0p2)/12.0/dq;
-    //Avoid underflow in extreme tail:
-    if (fabs(f0)==0.)
-      pba->dlnf0_dlnq_gbh[index_q] = -q; /* valid for whatever f0 with exponential tail in exp(-q) */
-    else
-      pba->dlnf0_dlnq_gbh[index_q] = q/f0*df0dq;
   }
 
   pba->factor_gbh=4*_PI_*pow(0.71611*pba->T_cmb*_k_B_,4)*8*_PI_*_G_

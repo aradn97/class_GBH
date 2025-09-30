@@ -146,3 +146,6 @@ DONE 60. for sync gauge, change FA
 61. for sync gauge, change trunc scheme
 62. for sync gauge, change init conditions
 63. check whether in presence of fld, caio fluid approximation with sync gauge still works fine (finds correct sigma_ncdm or gbh)
+DONE 64. no need to even compute quadrature weights if gbh_init_condition_integrate is FALSE.
+65. save w_n's instead of P_n's?
+66. make sure you don't redundantly read precision parameters in input.c
