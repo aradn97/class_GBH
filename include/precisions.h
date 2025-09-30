@@ -82,6 +82,15 @@ class_precision_parameter(tol_gbh_synchronous,double,1.e-3)
  * gbh phase-space distributions in the newtonian gauge.
  */
 class_precision_parameter(tol_gbh_newtonian,double,1.e-5)
+/**
+ * How to set initial condition: integrate ur initial condition over momentum space
+ * or use w_n's from background.
+ */
+class_precision_parameter(gbh_init_condition_integrate,int,_FALSE_)
+/**
+ * what method to use for choosing n_max and l_max
+ */
+class_precision_parameter(gbh_nl_max_method,int,0)
 /*GBH_pt_end*/
 /**
  * Tolerance on the deviation of the conformal time of equality from the true value in 1/Mpc.
@@ -333,7 +342,7 @@ class_precision_parameter(l_max_pol_g_ten,int,5) /**< number of momenta in Boltz
 /*GBH_bg_start*/
 class_precision_parameter(gbh_use_table,int,0)         /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
 class_precision_parameter(n_max_gbh,int,20)            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0 */ 
-class_precision_parameter(ubound_x_gbh,double,30.)     /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
+class_precision_parameter(ubound_x_gbh,double,15.)     /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
 /*GBH_bg_end*/
 
 class_precision_parameter(curvature_ini,double,1.0)     /**< initial condition for curvature for adiabatic */

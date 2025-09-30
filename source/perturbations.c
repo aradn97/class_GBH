@@ -3903,10 +3903,52 @@ int perturbations_vector_init(
   ppv->q_size_ncdm = NULL;
 
   /*GBH_pt_start*/ 
+  /*scheme for n_max and l_max is set here.
+  DO NOT use l_max=2, because the truncation scheme of the hierarchy is gauge invariant only
+  for l_max>2. Otherwise, you'd have to modify the truncation scheme in derivs function.*/
     if (pba->has_gbh == _TRUE_) {
-      ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
-      ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
       x = k * pba->gbh_horizon;
+      if(ppr->gbh_nl_max_method==0){
+        ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
+        ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
+      }
+      else if(ppr->gbh_nl_max_method==1){
+        if(x>5.){
+          ppv->n_max_gbh = 16;
+          ppv->l_max_gbh = 8; 
+        }
+        else{
+          ppv->n_max_gbh = 3; 
+          ppv->l_max_gbh = 3; 
+        }
+      }
+      else if(ppr->gbh_nl_max_method==2){
+        if(x>10.){
+          ppv->n_max_gbh = 16;
+          ppv->l_max_gbh = 8; 
+        }
+        else if(x>5.){
+          ppv->n_max_gbh = 8; 
+          ppv->l_max_gbh = 5; 
+        }
+        else{
+          ppv->n_max_gbh = 3; 
+          ppv->l_max_gbh = 3; 
+        }
+
+      }
+      else if(ppr->gbh_nl_max_method==3){
+        ppv->n_max_gbh = std::min(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
+        ppv->l_max_gbh = std::min(static_cast<int>(ceil(x/2.)),8);
+        if(ppv->l_max_gbh<3){
+          ppv->l_max_gbh = 3;
+        }
+        if(ppv->n_max_gbh<1){
+          ppv->n_max_gbh = 1;
+        }
+      }
+
+      
       class_test(ppv->n_max_gbh + ppv->l_max_gbh > pba->n_max_gbh, ppt->error_message,
                   "The background pba->n_max_gbh is smaller than the maximum index needed for w[] in perturbation equations. x= %e", x);
     }
@@ -5742,6 +5784,7 @@ int perturbations_initial_conditions(struct precision * ppr,
   double l_factorial = 1.,ll_1_double_factorial = 1.;//l_factorial =l!, ll_1_double_factorial = (2l-1)!!
   double rho_delta_gbh = 0.0,rho_plus_p_shear_gbh = 0.0,factor,q2,a2;
   double * Psi_gbh;
+  double * w;
   /*GBH_pt_end*/
   double rho_r,rho_m,rho_nu,rho_m_over_rho_r, rho_cdm =0.;
   double fracnu,fracg,fracb,fraccdm = 0.,fracidm = 0.;
@@ -6301,6 +6344,20 @@ int perturbations_initial_conditions(struct precision * ppr,
             ppw->pv->y[ppw->pv->index_pt_sigma_gbh] = shear_ur;
         }
         else{
+          if (ppr->gbh_init_condition_integrate==_FALSE_){ //this works faster because there is no q integration
+            int N = ppw->pv->n_max_gbh+2;
+            class_alloc(w,sizeof(double)*N,ppt->error_message);
+            for(n=0;n<N;n++){
+              w[n] = ppw->pvecback[pba->index_bg_P_gbh+n]/ppw->pvecback[pba->index_bg_P_gbh]/3.;
+            }
+            for(n=0;n<ppw->pv->n_max_gbh;n++){
+              ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] = ((2.*n+3.)*w[n]-(2.*n-1.)*w[n+1])*delta_ur/4.;
+              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh] = ((2.*n+3.)*w[n]-(2.*n-1.)*w[n+1])*theta_ur/k/(1.+w[1]);
+              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh+1] = ((2.*n+5.)*w[n+1]-(2.*n+1.)*w[n+2])*shear_ur/(1.+w[1]);
+            } 
+            free(w);
+          }
+          else{ //start from initial conditions on psi_l's and integrate over q to get the init conditions for delta_n and f_n,ell
           a2=a*a;                    
           factor = pba->factor_gbh/pow(a,4);
           /*  Psi_gbh will contain the initial conditions for the gbh perturbations in momentum space, 
@@ -6362,6 +6419,7 @@ int perturbations_initial_conditions(struct precision * ppr,
             }
 
           free(Psi_gbh);
+          }
         }
       }
       /*GBH_pt_end*/
