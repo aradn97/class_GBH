@@ -3923,12 +3923,6 @@ int perturbations_vector_init(
       else if(ppr->gbh_nl_max_method==1){
         ppv->n_max_gbh = static_cast<int>(ceil(pow(ppr->ubound_x_gbh,1.6)/5.)+3.); //should be 16 + 3 = 19
         ppv->l_max_gbh = static_cast<int>(ceil(ppr->ubound_x_gbh/2.)+2.); //should be 8 + 2 = 10
-        if(ppv->l_max_gbh<3){
-          ppv->l_max_gbh = 3;
-        }
-        if(ppv->n_max_gbh<1){
-          ppv->n_max_gbh = 1;
-        }
       }
 
       
