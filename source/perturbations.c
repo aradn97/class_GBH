@@ -3909,37 +3909,20 @@ int perturbations_vector_init(
     if (pba->has_gbh == _TRUE_) {
       x = k * pba->gbh_horizon;
       if(ppr->gbh_nl_max_method==0){
-        ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
-        ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
+        ppv->n_max_gbh = std::min(static_cast<int>(ceil(pow(x,1.6)/5.)+3.),static_cast<int>(ceil(pow( ppr->ubound_x_gbh,1.6)/5.)+3.)); 
+        ppv->l_max_gbh = std::min(static_cast<int>(ceil(x/2.)+2.),static_cast<int>(ceil( ppr->ubound_x_gbh/2.)+2.));
+        if(ppv->l_max_gbh<3){
+          ppv->l_max_gbh = 3;
+        }
+        if(ppv->n_max_gbh<1){
+          ppv->n_max_gbh = 1;
+        }
+       //std::max(static_cast<int>(ceil(x/2.)),8);
       }
-      else if(ppr->gbh_nl_max_method==1){
-        if(x>5.){
-          ppv->n_max_gbh = 16;
-          ppv->l_max_gbh = 8; 
-        }
-        else{
-          ppv->n_max_gbh = 3; 
-          ppv->l_max_gbh = 3; 
-        }
-      }
-      else if(ppr->gbh_nl_max_method==2){
-        if(x>10.){
-          ppv->n_max_gbh = 16;
-          ppv->l_max_gbh = 8; 
-        }
-        else if(x>5.){
-          ppv->n_max_gbh = 8; 
-          ppv->l_max_gbh = 5; 
-        }
-        else{
-          ppv->n_max_gbh = 3; 
-          ppv->l_max_gbh = 3; 
-        }
 
-      }
-      else if(ppr->gbh_nl_max_method==3){
-        ppv->n_max_gbh = std::min(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
-        ppv->l_max_gbh = std::min(static_cast<int>(ceil(x/2.)),8);
+      else if(ppr->gbh_nl_max_method==1){
+        ppv->n_max_gbh = static_cast<int>(ceil(pow(ppr->ubound_x_gbh,1.6)/5.)+3.); //should be 16 + 3 = 19
+        ppv->l_max_gbh = static_cast<int>(ceil(ppr->ubound_x_gbh/2.)+2.); //should be 8 + 2 = 10
         if(ppv->l_max_gbh<3){
           ppv->l_max_gbh = 3;
         }
