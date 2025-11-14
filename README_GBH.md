@@ -129,7 +129,7 @@ DONE 50. remove rho_M as the matter density that includes neutrinos even if non-
           }
           should be modified for speed-up, not to calculate it each time.
 
-52. I had made the deadly mistake of defining ppv->n_max_gbh = 16;
+DONE 52. I had made the deadly mistake of defining ppv->n_max_gbh = 16;
       ppv->l_max_gbh = 8;
       only when fluid approx is off, but then I was using these numbers to define N and w[N] in
       perturbations_derivs outside the condition that checks whether we're doing GBH or fluid approx.
@@ -139,7 +139,7 @@ DONE 53. free streaming scale at the moment does not include Omega_m. Fix it.
 54. Don't get other inputs for gbh if N_gbh=0. put a condition in input.c
 DONE 55. remove index_bg_lambda_gbh and index_bg_Pminus1_gbh. They are not used in perturbations.c.
 56. extra stuff I've ordered to print: //GBH_pt_print. You can remove them at the end.
-57. if the code is slow, look at the perturbations initial condition for gbh, where I integrate in momentum space. find a way to speed it up.
+DONE 57. if the code is slow, look at the perturbations initial condition for gbh, where I integrate in momentum space. find a way to speed it up.
 58. For the case pba->gbh_use_table == 1, also provide a table for P_{-1}, so we wouldnt need quadrature in the background
 59. change 1000. in interpolation (both in input.c and background.c) to some precision parameter, that also needs to be input together with the file
 DONE 60. for sync gauge, change FA
@@ -149,3 +149,8 @@ DONE 60. for sync gauge, change FA
 DONE 64. no need to even compute quadrature weights if gbh_init_condition_integrate is FALSE.
 65. save w_n's instead of P_n's?
 66. make sure you don't redundantly read precision parameters in input.c
+67. remove n_max_gbh as an input parameter if use_table is 1. It should be computed based on what we need for perturbations.
+Warn in the paper or to the user how large the table needs to be
+68. remove ppr->gbh_nl_max_method==1
+69. The error n_max_gbh_table<n_max_gbh is not being triggered when n_max_gbh_table is not given in the input and the default 31 is being used. either remove n_max_gbh totally or put error if the default of n_max_gbh_table is smaller than n_max_gbh
+70. set the default in input.c to pba->gbh_use_table = 1, and put the table somewhere so that user does not have to provide it.

@@ -207,7 +207,8 @@ struct background
   int index_bg_horizon_ncdm1; /**< horizon scale of first ncdm species (others contiguous) */
 
   int index_bg_P_min1_gbh;    /**< P_{-1} of species in GBH, from quadrature integration*/   //GBH_bg
-  int index_bg_P_gbh;         /**< density of species in GBH*/   //GBH_bg
+  int index_bg_rho_gbh;       /**< density of species in GBH*/   //GBH_bg
+  int index_bg_w_gbh;         /**< equation of state of species in GBH*/   //GBH_bg
   int index_bg_app_horizon_gbh;     /**< approximate comoving horizon distance of species in GBH*/   //GBH_pt
   int index_bg_horizon_gbh;   /**< comoving horizon distance of species in GBH*/   //GBH_pt
 

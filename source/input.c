@@ -2815,7 +2815,7 @@ int input_read_parameters_species(struct file_content * pfc,
                                             pba->rho_gbh_bg,
                                             pba->d2rho_gbh_bg,
                                             1, //number of columns in rho_gbh_bg
-                                            pba->M_gbh,  // this is x0: the value at which we want interpolation
+                                            pba->M_gbh,  // this is x0 at present time: the value at which we want interpolation
                                             &pba->last_index_gbh,
                                             &interpolated_rho,
                                             1, //we want interpolation for 1 column only

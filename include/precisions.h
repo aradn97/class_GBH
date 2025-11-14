@@ -340,9 +340,9 @@ class_precision_parameter(l_max_g_ten,int,5)     /**< number of momenta in Boltz
 class_precision_parameter(l_max_pol_g_ten,int,5) /**< number of momenta in Boltzmann hierarchy for photon polarization (tensor), at least 4 */
 
 /*GBH_bg_start*/
-class_precision_parameter(gbh_use_table,int,0)         /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
+class_precision_parameter(gbh_use_table,int,1)         /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
 class_precision_parameter(n_max_gbh,int,20)            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0 */ 
-class_precision_parameter(ubound_x_gbh,double,15.)     /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
+class_precision_parameter(gbh_FA_trigger,double,15.)   /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
 /*GBH_bg_end*/
 
 class_precision_parameter(curvature_ini,double,1.0)     /**< initial condition for curvature for adiabatic */

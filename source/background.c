@@ -411,7 +411,6 @@ int background_functions(
   /*GBH_bg_start*/
   double current_x_value; 
   double interpolated_integral,interpolated_rho; // interpolated values of rho
-  double *interpolated_w_n; // Pointer to store interpolated values of w_n
   double *P_n; // Pointer to store P_n values for gbh
   /*GBH_bg_end*/
 
@@ -592,9 +591,7 @@ int background_functions(
       pvecback[pba->index_bg_P_min1_gbh] = P_min1; //our table does not yet include P_min1, so we need quadrature
     
       interpolated_rho = interpolated_integral * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
-      pvecback[pba->index_bg_P_gbh] = interpolated_rho / 3.;
-    
-      class_alloc(interpolated_w_n, sizeof(double) * (pba->n_max_gbh+1), pba->error_message);
+      pvecback[pba->index_bg_rho_gbh] = interpolated_rho;
       // Interpolate `w_n` for GBH from the saved array of pre-computed values
       if(current_x_value<=1000.)
       {
@@ -604,26 +601,19 @@ int background_functions(
                                           pba->w_gbh_bg,
                                           pba->d2w_gbh_bg,
                                           pba->n_max_gbh_table, //number of columns in w_gbh_bg
-                                          current_x_value,  // Replace with the appropriate value, e.g., 1/a-1
+                                          current_x_value,  
                                           &pba->last_index_gbh,
-                                          interpolated_w_n,
-                                          pba->n_max_gbh+1, //the first column is w_0=1/3, so we'll ignore that.
+                                          &pvecback[pba->index_bg_w_gbh], 
+                                          pba->n_max_gbh+1, //the first column is w_0=1/3
                                           pba->error_message),
                 pba->error_message, pba->error_message);
       }
       else{
-            for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) 
+            for(n_gbh=0; n_gbh<pba->n_max_gbh+1; n_gbh++)
             {
-              interpolated_w_n[n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(1000./current_x_value,2*n_gbh);
+              pvecback[pba->index_bg_w_gbh + n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(1000./current_x_value,2*n_gbh);
             }
-      }
-      for(n_gbh=1; n_gbh<pba->n_max_gbh+1; n_gbh++) //interact with the pre-computed table of w_n's here
-      {
-        pvecback[pba->index_bg_P_gbh + n_gbh] = 3.*pvecback[pba->index_bg_P_gbh] * interpolated_w_n[n_gbh];
-      }
-      // Free the dynamically allocated memory for interpolated_w_n
-      free(interpolated_w_n);
-      
+      }      
     }
     else{ //no table for rho or w's; everything should be computed using quadrature integration
       class_alloc(P_n, sizeof(double) * (pba->n_max_gbh-1), pba->error_message); //starts from P_2.
@@ -645,26 +635,27 @@ int background_functions(
                   pba->error_message,
                   pba->error_message);
       pvecback[pba->index_bg_P_min1_gbh] = P_min1;
-      pvecback[pba->index_bg_P_gbh] = rho_gbh/3.;
-      pvecback[pba->index_bg_P_gbh + 1] = p_gbh;
+      pvecback[pba->index_bg_rho_gbh] = rho_gbh;
+      pvecback[pba->index_bg_w_gbh] = 1./3.;
+      pvecback[pba->index_bg_w_gbh + 1] = p_gbh/rho_gbh;
       for(n_gbh=2; n_gbh<=pba->n_max_gbh; n_gbh++) //higher moments
       {
-        pvecback[pba->index_bg_P_gbh + n_gbh] = P_n[n_gbh-2];
+        pvecback[pba->index_bg_w_gbh + n_gbh] = P_n[n_gbh-2]/rho_gbh;
       }
 
       // Free the dynamically allocated memory for P_n
       free(P_n);
     }
     
-    rho_tot += 3.*pvecback[pba->index_bg_P_gbh];
-    p_tot +=  pvecback[pba->index_bg_P_gbh+1];
+    rho_tot += pvecback[pba->index_bg_rho_gbh];
+    p_tot += pvecback[pba->index_bg_rho_gbh] * pvecback[pba->index_bg_w_gbh+1];
     
     /* (3 p) is the "relativistic" contribution to energy density */
-    rho_r += 3.* pvecback[pba->index_bg_P_gbh+1];
+    rho_r += 3.* pvecback[pba->index_bg_rho_gbh] * pvecback[pba->index_bg_w_gbh+1];
 
       /* (rho_gbh - 3 p_gbh) is the "non-relativistic" contribution
          to energy density */
-    rho_m += 3.*pvecback[pba->index_bg_P_gbh] - 3.* pvecback[pba->index_bg_P_gbh+1];
+    rho_m += pvecback[pba->index_bg_rho_gbh] * (1. - 3.* pvecback[pba->index_bg_w_gbh+1]);
 
   }
   /*GBH_bg_end*/
@@ -1229,7 +1220,8 @@ int background_indices(
   class_define_index(pba->index_bg_horizon_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_caio_fa*/
   /* - index for n GBH moments*/
   class_define_index(pba->index_bg_P_min1_gbh,pba->has_gbh,index_bg,1); //GBH_bg
-  class_define_index(pba->index_bg_P_gbh,pba->has_gbh,index_bg,pba->n_max_gbh+1); //GBH_bg
+  class_define_index(pba->index_bg_rho_gbh,pba->has_gbh,index_bg,1); //GBH_bg
+  class_define_index(pba->index_bg_w_gbh,pba->has_gbh,index_bg,pba->n_max_gbh+1); //GBH_bg
 
   /*GBH_pt_start*/
   /* -> comoving horizon of massive neutrinos solved by gbh */
@@ -2638,7 +2630,7 @@ int background_solve(
     if (pba->has_gbh == _TRUE_) {
       printf("    GBH details:\n");
       printf("     -> Omega0_gbh = %f\n",pba->Omega0_gbh);
-      printf("     -> gbh_horizon = %f\n",pba->gbh_horizon);
+      printf("     -> gbh_horizon = %f Mpc\n",pba->gbh_horizon);
     }
     if (pba->has_scf == _TRUE_) {
       printf("    Scalar field details:\n");
@@ -3083,9 +3075,10 @@ int background_output_titles(
   /*GBH_bg_start*/
   if (pba->has_gbh == _TRUE_) {
     class_store_columntitle(titles,"(.)P_min1_gbh",pba->has_gbh); 
+    class_store_columntitle(titles,"(.)rho_gbh",pba->has_gbh); 
     for (n=0; n<pba->n_max_gbh+1; n++)
     {
-      sprintf(tmp,"(.)P_gbh_[%d]",n);
+      sprintf(tmp,"(.)w_gbh_[%d]",n);
       class_store_columntitle(titles,tmp,pba->has_gbh); 
     }
   }
@@ -3172,9 +3165,10 @@ int background_output_data(
     /*GBH_bg_start*/
     if (pba->has_gbh == _TRUE_) { 
       class_store_double(dataptr,pvecback[pba->index_bg_P_min1_gbh],pba->has_gbh,storeidx);
+      class_store_double(dataptr,pvecback[pba->index_bg_rho_gbh],pba->has_gbh,storeidx);
       for (n=0; n<pba->n_max_gbh+1; n++)
       {
-        class_store_double(dataptr,pvecback[pba->index_bg_P_gbh+n],pba->has_gbh,storeidx); 
+        class_store_double(dataptr,pvecback[pba->index_bg_w_gbh+n],pba->has_gbh,storeidx); 
       }
     }
     /*GBH_bg_end*/
@@ -3325,15 +3319,10 @@ int background_derivs(
     }
   }
 
-  /*GBH_bg_start*/
-  // if (pba->has_gbh == _TRUE_){
-  //   dy[pba->index_bi_P0_gbh] = -3.*y[pba->index_bi_P0_gbh] - pvecback[pba->index_bg_P_gbh+1]; //the evolution of energy density
-  // }
-  /*GBH_bg_end*/
   /*GBH_pt_start*/
   if (pba->has_gbh == _TRUE_){
-    w_gbh = pvecback[pba->index_bg_P_gbh + 1] / pvecback[pba->index_bg_P_gbh] / 3.;
-    lambda = pvecback[pba->index_bg_P_min1_gbh] / pvecback[pba->index_bg_P_gbh] / 3.;
+    w_gbh = pvecback[pba->index_bg_w_gbh + 1];
+    lambda = pvecback[pba->index_bg_P_min1_gbh] / pvecback[pba->index_bg_rho_gbh];
     c_asp = sqrt(1./3. * (1. + w_gbh)/(1. + lambda));
     Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
     dy[pba->index_bi_app_horizon_gbh] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh * a / 3., 2.)));
