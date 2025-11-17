@@ -2776,19 +2776,7 @@ int input_read_parameters_species(struct file_content * pfc,
     }
     ppr->gbh_use_table = pba->gbh_use_table; //this is for the case where default pba->gbh_use_table=0 is being used (for flag1=0)
     /** 7.0.4) the directory of the table*/
-    if (pba->gbh_use_table == 1){
-      class_call(parser_read_list_of_strings(pfc,"gbh_w_table",&entries_read,&(pba->gbh_table_address),&flag1,errmsg),
-                      errmsg,
-                      errmsg);
-      class_test(flag1 == _FALSE_,errmsg,
-                    "Entry 'gbh_use_table' is 1, but no corresponding 'gbh_w_table' were found.");
-
-      class_call(parser_read_list_of_strings(pfc,"gbh_rho_table",&entries_read,&(pba->gbh_table_rho_address),&flag1,errmsg),
-                      errmsg,
-                      errmsg);
-      class_test(flag1 == _FALSE_,errmsg,
-                    "Entry 'gbh_use_table' is 1, but no corresponding 'gbh_rho_table' were found.");
-    
+    if (pba->gbh_use_table == 1){   
       class_call(parser_read_double(pfc,"n_max_gbh_table",&param1,&flag1,errmsg),
                 errmsg,
                 errmsg);

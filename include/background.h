@@ -85,8 +85,6 @@ struct background
   int N_ncdm;                            /**< Number of distinguishable ncdm species */
   /* the following parameters help to define tabulated ncdm p-s-d passed in file */
   char * ncdm_psd_files;                 /**< list of filenames for tabulated p-s-d */
-  char * gbh_table_address;              //GBH_bg : address of the w_n table file
-  char * gbh_table_rho_address;              //GBH_bg : address of the rho_gbh table file
   int * got_files;                       /**< list of flags for each species, set to true if p-s-d is passed through file */
   /* the following parameters help to define the analytical ncdm phase space distributions (p-s-d) */
   double * ncdm_psd_parameters;          /**< list of parameters for specifying/modifying ncdm p.s.d.'s, to be customized for given model

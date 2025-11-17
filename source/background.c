@@ -1808,6 +1808,7 @@ int background_gbh_init(
 
 
   FILE *w_table;
+  FILE *rho_table;
   char buffer[1024]; // Buffer for reading lines
   int row, status, index_q, tolexp;
   double tmp1; // for the first read
@@ -1819,10 +1820,7 @@ int background_gbh_init(
 
   /*Do we need to read in a file to interpolate the distribution function? */
   if (pba->gbh_use_table==1) { //this part of the code prepares second order derivatives for spline interpolation. this is only once called in input.c
-    w_table = fopen(pba->gbh_table_address,"r");
-    class_test(w_table == NULL,pba->error_message,
-                "Could not open file %s!",pba->gbh_table_address);
-
+    class_open(w_table,ppr->gbh_w_file,"r",pba->error_message);
     // Skip the header line
     fgets(buffer, sizeof(buffer), w_table);
     
@@ -1867,18 +1865,15 @@ int background_gbh_init(
                 pba->error_message);
 
     //Now read the table for energy density
-
-    w_table = fopen(pba->gbh_table_rho_address,"r");
-    class_test(w_table == NULL,pba->error_message,
-                "Could not open file %s!",pba->gbh_table_rho_address);
-
+    class_open(rho_table,ppr->gbh_rho_file,"r",pba->error_message);
+    
     // Skip the header line
-    fgets(buffer, sizeof(buffer), w_table);
+    fgets(buffer, sizeof(buffer), rho_table);
     
     // Skip finding the size of the table because we already know it.
 
     // Skip the header line again after rewinding
-    fgets(buffer, sizeof(buffer), w_table);
+    fgets(buffer, sizeof(buffer), rho_table);
 
     /*Allocate room for interpolation table: */
     //class_alloc(pba->x_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
@@ -1888,10 +1883,10 @@ int background_gbh_init(
     pba->rho_gbh_bg[0] = 7./8.*pow(_PI_,2)/15.;
     
     for (row=1; row<pba->x_size_gbh_bg; row++) {//start from row=+1 because rho[row=0] corresponds to x=0 which is not in the table
-      status = fscanf(w_table, "%lf", &tmp1); // Read the x value
-      status = fscanf(w_table, "%lf", &pba->rho_gbh_bg[row]); // Read rho values; +1 because rho[0] corresponds to x=0 which is not in the table
+      status = fscanf(rho_table, "%lf", &tmp1); // Read the x value
+      status = fscanf(rho_table, "%lf", &pba->rho_gbh_bg[row]); // Read rho values; +1 because rho[0] corresponds to x=0 which is not in the table
     }
-    fclose(w_table);
+    fclose(rho_table);
     /* Call spline interpolation: */
     class_call(array_spline_table_lines(pba->x_gbh_bg,
                                         pba->x_size_gbh_bg,

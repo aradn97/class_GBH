@@ -90,7 +90,7 @@ DONE (not necessary) 16. Consider adding a second pba->gbh_use_table just for rh
 DONE 25. I'm adding has_gbh_pt to be able to turn-off perturbations from input file. later remove it and replace it with has_gbh.
 26. define ppv->index_pt_delta_gbh,ppv->index_pt_Delta_gbh,ppv->n_max_gbh,ppw->index_gbh_fa in perturbations.h file and ppr->n_max_gbh in precisions.h. make sure ppv->n_max_gbh>1 so that we have the pressure density
 DONE (obsolete note) 27. For the moment, for each k, I either use GBH at every tau or not at all. The case of switching to FA during evolution should be discussed later.
-28. double check with Caio that the x column is the same for the two tables.
+DONE 28. double check with Caio that the x column is the same for the two tables.
 29. dimension of Sigma_gbh is (ppv->n_max_gbh)*(ppv->l_max_gbh). dont we want (n+1)l?
 DONE (because it directly enters in the equation for sigma') 30. Why isn't this zero in the initial conditions? l3_ur = ktau_three*2./7./(12.*fracnu+45.)* ppr->curvature_ini;
 31. Maybe implement the FA at very low k, x<1?
@@ -154,3 +154,5 @@ Warn in the paper or to the user how large the table needs to be
 68. remove ppr->gbh_nl_max_method==1
 69. The error n_max_gbh_table<n_max_gbh is not being triggered when n_max_gbh_table is not given in the input and the default 31 is being used. either remove n_max_gbh totally or put error if the default of n_max_gbh_table is smaller than n_max_gbh
 70. set the default in input.c to pba->gbh_use_table = 1, and put the table somewhere so that user does not have to provide it.
+DONE 71. move w_n table to external
+72. do not hard code 1000 as the max x value of files
