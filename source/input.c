@@ -2744,17 +2744,17 @@ int input_read_parameters_species(struct file_content * pfc,
       T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
       pba->M_gbh = param1 / _k_B_ * _eV_ / T0_gbh; //this is x0
     }
-    /** 7.0.2) some precision parameters*/
-    class_call(parser_read_double(pfc,"n_max_gbh",&param1,&flag1,errmsg),
-              errmsg,
-              errmsg);
-    /* Complete set of parameters */
-    if (flag1 == _TRUE_){
-      ppr->n_max_gbh = param1;
-      pba->n_max_gbh = param1;
-      class_test(pba->n_max_gbh < 2, errmsg,
-                    "n_max_gbh should at least be 2 because perturbation equations need w[2].");
-    }
+    /** 7.0.2) Setting up pba->n_max_gbh*/
+
+    /*compute pba->n_max_gbh, which is the maximum number of columns that will be read from
+    the table of w_n's or computed using quadrature. This should match the number of w_n's that
+    you'll need in your perturbations equations. Therefore, if you add a new scheme for choosing
+    ppv->n_max_gbh and ppv->l_max_gbh, you should set pba->n_max_gbh to be the maximum possible
+    value of the sum of the two.*/
+    pba->n_max_gbh = (int)(ceil(pow(ppr->gbh_FA_trigger,1.6)/5.)+3.)+(int)(ceil(ppr->gbh_FA_trigger/2.)+2.);
+    class_test(pba->n_max_gbh < 2, errmsg,
+                    "n_max_gbh should at least be 2 because perturbation equations need w[2], for example for computing pseudo pressure. "
+                    "Probably you have set ppr->gbh_FA_trigger too small. Recommended value is 15. ");
     
     /** 7.0.3) are we using a table for w_n's or are we integrating with quadrature */
     class_call(parser_read_double(pfc,"gbh_use_table",&param1,&flag1,errmsg),
@@ -2766,40 +2766,28 @@ int input_read_parameters_species(struct file_content * pfc,
                 errmsg,
                 "gbh_use_table must be either 0 (use quadrature for computing P_n's) or 1 (use a pre-computed table of w's).");
       if(param1==0){ //in this case, use quadrature strategy to find w_n's
-          ppr->gbh_use_table = 0;
           pba->gbh_use_table = 0;
       }
       else{ //in this case, use a pre-computed table of w_n's
-        ppr->gbh_use_table = 1;
         pba->gbh_use_table = 1;
       }
     }
-    ppr->gbh_use_table = pba->gbh_use_table; //this is for the case where default pba->gbh_use_table=0 is being used (for flag1=0)
-    /** 7.0.4) the directory of the table*/
-    if (pba->gbh_use_table == 1){   
-      class_call(parser_read_double(pfc,"n_max_gbh_table",&param1,&flag1,errmsg),
-                errmsg,
-                errmsg);
-      /* Complete set of parameters */
-      if (flag1 == _TRUE_){
-        pba->n_max_gbh_table = param1;
-        class_test(pba->n_max_gbh_table < pba->n_max_gbh + 1, errmsg,
-                      "There is not enough pre-computed w_n's for the required n_max_gbh.");
-      }
-    }
-
-    class_call(background_gbh_init(ppr,pba),  //this function computes the second derivatives of w_n's at given x values, preparing it for spline in background_functions
+    
+    /* This function computes the second derivatives of w_n's at given x values, preparing it for spline in background_functions. 
+    It also finds pba->n_max_gbh_table.
+    If also prepares quadrature q sampling and weights for the case where table is not used.*/
+    class_call(background_gbh_init(ppr,pba),  
                 pba->error_message,
-                errmsg);
+                errmsg); //
 
     if (pba->gbh_use_table == 1){
       // Interpolate `rho` for GBH from the saved array of pre-computed values, for x=ma0/T0
       pba->last_index_gbh = 0;
-      if(pba->M_gbh<=1000.)
+      if(pba->M_gbh<=pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1])
       {
         class_call(array_interpolate_spline(
-                                            pba->x_gbh_bg,
-                                            pba->x_size_gbh_bg,
+                                            pba->x_gbh_bg_rho,
+                                            pba->x_size_gbh_bg_rho,
                                             pba->rho_gbh_bg,
                                             pba->d2rho_gbh_bg,
                                             1, //number of columns in rho_gbh_bg
@@ -2812,7 +2800,7 @@ int input_read_parameters_species(struct file_content * pfc,
       }
       else
       {
-        interpolated_rho = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * pba->M_gbh / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
+        interpolated_rho = pba->rho_gbh_bg[pba->x_size_gbh_bg_rho-1] * pba->M_gbh / pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1]; //this is in fact extrapolated
       }
       pba->Omega0_gbh = interpolated_rho * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15 // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
     }
@@ -2829,7 +2817,7 @@ int input_read_parameters_species(struct file_content * pfc,
                                         NULL, 
                                         NULL,  
                                         NULL,     
-                                        pba->n_max_gbh),
+                                        pba->n_max_gbh), //this last entry does not matter we are passing null for the previous entry
                     pba->error_message,
                     pba->error_message);
       pba->Omega0_gbh = rho_gbh / pow(pba->H0,2);
@@ -5898,7 +5886,7 @@ int input_default_params(struct background *pba,
   pba->N_gbh = 0;
   T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
   pba->M_gbh = 0.06 / _k_B_ * _eV_ /T0_gbh;
-  pba->gbh_use_table = 0;
+  pba->gbh_use_table = 1; // default: use table for gbh.
   pba->n_max_gbh = 20;
   pba->n_max_gbh_table = 31;  //starts from 1
   pba->Omega0_gbh = 0.0;

@@ -9,6 +9,7 @@
 #include "arrays.h"
 #include "dei_rkck.h"
 #include "parser.h"
+#include "ctype.h"
 
 /** list of possible types of spatial curvature */
 
@@ -106,7 +107,7 @@ struct background
   /*GBH_bg_start*/
   int last_index_gbh;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
   int gbh_use_table;        /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
-  int n_max_gbh;            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0. This is given by user */ 
+  int n_max_gbh;            /**< number of w_n's needed for perturbation equations in GBH  */ 
   double M_gbh;             /**< mass of gbh species in eV */
   double N_gbh;             /**< number of gbh species */
   /*GBH_bg_end*/
@@ -351,13 +352,15 @@ struct background
   //@{
 
 
-  double * x_gbh_bg;   /**< Pointers to vectors of background sampling in x=ma/T0 */
+  double * x_gbh_bg;   /**< Pointers to vectors of background sampling in x=ma/T0 in w table*/
+  double * x_gbh_bg_rho; /**< Pointers to vectors of background sampling in x=ma/T0 in rho table*/
   double * w_gbh_bg;   /**< Pointers to vectors of sampled w_n's */
   double * d2w_gbh_bg; /**< Pointers to vectors of d^2w_n/dx^2 at sampled points, calculated in gbh_init */
   double * rho_gbh_bg;   /**< Pointers to vectors of sampled rho_gbh */
   double * d2rho_gbh_bg; /**< Pointers to vectors of d^2rho_n/dx^2 at sampled points, calculated in gbh_init */
-  int x_size_gbh_bg;     /**< Size of the x arrays */
-  int n_max_gbh_table;
+  int x_size_gbh_bg;     /**< Size of the x array in the gbh w_n table*/
+  int x_size_gbh_bg_rho; /**< Size of the x arrays in the rho_gbh table*/
+  int n_max_gbh_table; /**< Number of w_n's that are provided in the table */
 
   //@}
 

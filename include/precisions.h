@@ -340,10 +340,8 @@ class_precision_parameter(l_max_g_ten,int,5)     /**< number of momenta in Boltz
 class_precision_parameter(l_max_pol_g_ten,int,5) /**< number of momenta in Boltzmann hierarchy for photon polarization (tensor), at least 4 */
 
 /*GBH_bg_start*/
-class_string_parameter(gbh_w_file,"/external/GBH/table_omegas.dat","gbh_w_file")  /**< File containing all higher order equations of state w_n as functions of x=ma/T0 for relativistic Fermi-Dirac distribution*/
-class_string_parameter(gbh_rho_file,"/external/GBH/table_rho.dat","gbh_rho_file") /**< File containing rho as a function of x=ma/T0 for relativistic Fermi-Dirac distribution*/
-class_precision_parameter(gbh_use_table,int,1)         /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
-class_precision_parameter(n_max_gbh,int,20)            /**< number of velocity momenta in Generalized Boltzmann hierarchy for massive neutrinos, least 0 */ 
+class_string_parameter(gbh_w_file,"/external/GBH/table_omegas.dat","gbh_w_file")  /**< File containing all higher order equations of state w_n as functions of x=ma/T0 for relativistic Fermi-Dirac distribution. Should have 1 line of comment.*/
+class_string_parameter(gbh_rho_file,"/external/GBH/table_rho.dat","gbh_rho_file") /**< File containing rho as a function of x=ma/T0 for relativistic Fermi-Dirac distribution. Should have 1 line of comment and 2 columns.*/
 class_precision_parameter(gbh_FA_trigger,double,15.)   /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
 /*GBH_bg_end*/
 

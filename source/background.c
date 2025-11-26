@@ -551,11 +551,11 @@ int background_functions(
     if (pba->gbh_use_table == 1){
       current_x_value = pba->M_gbh * a;
       // Interpolate `rho` for GBH from the saved array of pre-computed values
-      if(current_x_value<=1000.)
+      if(current_x_value<=pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1])
       {
         class_call(array_interpolate_spline(
-                                            pba->x_gbh_bg,
-                                            pba->x_size_gbh_bg,
+                                            pba->x_gbh_bg_rho,
+                                            pba->x_size_gbh_bg_rho,
                                             pba->rho_gbh_bg,
                                             pba->d2rho_gbh_bg,
                                             1, //number of columns in rho_gbh_bg
@@ -568,7 +568,7 @@ int background_functions(
       }
       else
       {
-        interpolated_integral = pba->rho_gbh_bg[pba->x_size_gbh_bg-1] * current_x_value / pba->x_gbh_bg[pba->x_size_gbh_bg-1]; //this is in fact extrapolated
+        interpolated_integral = pba->rho_gbh_bg[pba->x_size_gbh_bg_rho-1] * current_x_value / pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1]; //this is in fact extrapolated
       }
       /* function returning background gbh quantities from quadrature integration (only
           those for which non-NULL pointers are passed) */
@@ -593,7 +593,7 @@ int background_functions(
       interpolated_rho = interpolated_integral * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
       pvecback[pba->index_bg_rho_gbh] = interpolated_rho;
       // Interpolate `w_n` for GBH from the saved array of pre-computed values
-      if(current_x_value<=1000.)
+      if(current_x_value<=pba->x_gbh_bg[pba->x_size_gbh_bg-1])
       {
       class_call(array_interpolate_spline(
                                           pba->x_gbh_bg,
@@ -611,7 +611,7 @@ int background_functions(
       else{
             for(n_gbh=0; n_gbh<pba->n_max_gbh+1; n_gbh++)
             {
-              pvecback[pba->index_bg_w_gbh + n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(1000./current_x_value,2*n_gbh);
+              pvecback[pba->index_bg_w_gbh + n_gbh] = pba->w_gbh_bg[(pba->x_size_gbh_bg-1)*pba->n_max_gbh_table+n_gbh] * pow(pba->x_gbh_bg[pba->x_size_gbh_bg-1]/current_x_value,2*n_gbh);
             }
       }      
     }
@@ -1091,6 +1091,7 @@ int background_free_input(
 
     if(pba->gbh_use_table == 1){
       free(pba->x_gbh_bg);
+      free(pba->x_gbh_bg_rho);
       free(pba->w_gbh_bg);
       free(pba->d2w_gbh_bg);
       
@@ -1810,7 +1811,9 @@ int background_gbh_init(
   FILE *w_table;
   FILE *rho_table;
   char buffer[1024]; // Buffer for reading lines
-  int row, status, index_q, tolexp;
+  char *p;
+  char *tp;
+  int row, ncols, only_ws, status, index_q, tolexp;
   double tmp1; // for the first read
   double f0m2,f0m1,f0,f0p1,f0p2,df0dq,dq,q;
   struct background_parameters_for_distributions pbadist;
@@ -1821,18 +1824,53 @@ int background_gbh_init(
   /*Do we need to read in a file to interpolate the distribution function? */
   if (pba->gbh_use_table==1) { //this part of the code prepares second order derivatives for spline interpolation. this is only once called in input.c
     class_open(w_table,ppr->gbh_w_file,"r",pba->error_message);
+    // Find the number of columns:
     // Skip the header line
     fgets(buffer, sizeof(buffer), w_table);
-    
-    // Find size of table:
-    for (row=0,status=1; status==1; row++) {
-      status = fscanf(w_table, "%lf", &tmp1); // Read the first value in the row. this is x
-      for (int col = 0; col < pba->n_max_gbh_table; col++) {
-            status = fscanf(w_table, "%lf", &tmp1); // Read the rest of the values in the row
+    // Read first **non-blank** data row
+    while (fgets(buffer, sizeof(buffer), w_table)) {
+      // Check if buffer contains anything besides whitespace
+      only_ws = 1;
+      for (tp = buffer; *tp; tp++) {
+          if (!isspace(*tp)) {
+              only_ws = 0;
+              break;
+          }
       }
+
+      if (!only_ws) break;   // Found a data row
+    }
+    // Count number of whitespace-separated columns
+    ncols = 0;
+    p = buffer;
+    while(sscanf(p, "%lf", &tmp1)==1){
+      ncols++;
+      while (*p && !isspace(*p)) p++; //move past the number
+      while (*p && isspace(*p)) p++; //move past the white space
     }
     rewind(w_table); // Set file pointer to the beginning of the file
-    pba->x_size_gbh_bg = row - 1 + 1; //-1 since the last iteration increases row by 1 and then exits-- +1 because we'll add x=0 by hand
+    pba->n_max_gbh_table = ncols-1; //do not count the x=ma/T0 column
+
+    if (pba->n_max_gbh_table < pba->n_max_gbh + 1) {
+      fprintf(stdout,"[Warning: the requested ppr->gbh_FA_trigger is large, such that there is not enough pre-computed w_n's "
+        "for the required n_max_gbh=%d in the given table. So the code sets pba->gbh_use_table=0 and uses quadrature instead. "
+        "Note that this makes the code slower, so consider setting gbh_FA_trigger=15 to avoid it.]\n", pba->n_max_gbh);
+      fclose(w_table);
+      pba->gbh_use_table = 0;
+    }
+    else{ //continue with reading the table
+    // Find the number of rows:
+    // Skip the header line
+    fgets(buffer, sizeof(buffer), w_table);
+    row = 0;
+    while (fgets(buffer, sizeof(buffer), w_table) != NULL){
+      if (buffer[0]=='\n' || buffer[0] == '\0'){
+        continue;
+      }
+      row++;
+    }
+    rewind(w_table); // Set file pointer to the beginning of the file
+    pba->x_size_gbh_bg = row + 1; //+1 because we'll add x=0 by hand
     
     // Skip the header line again after rewinding
     fgets(buffer, sizeof(buffer), w_table);
@@ -1866,30 +1904,39 @@ int background_gbh_init(
 
     //Now read the table for energy density
     class_open(rho_table,ppr->gbh_rho_file,"r",pba->error_message);
-    
+    // Assuming the table size for rho can be different
+    // Find the number of rows:
     // Skip the header line
     fgets(buffer, sizeof(buffer), rho_table);
+    row = 0;
+    while (fgets(buffer, sizeof(buffer), rho_table) != NULL){
+      if (buffer[0]=='\n' || buffer[0] == '\0'){
+        continue;
+      }
+      row++;
+    }
+    rewind(rho_table); // Set file pointer to the beginning of the file
+    pba->x_size_gbh_bg_rho = row + 1; //+1 because we'll add x=0 by hand
     
-    // Skip finding the size of the table because we already know it.
-
     // Skip the header line again after rewinding
     fgets(buffer, sizeof(buffer), rho_table);
 
     /*Allocate room for interpolation table: */
-    //class_alloc(pba->x_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
-    class_alloc(pba->rho_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
-    class_alloc(pba->d2rho_gbh_bg,sizeof(double)*pba->x_size_gbh_bg,pba->error_message);
+    class_alloc(pba->x_gbh_bg_rho,sizeof(double)*pba->x_size_gbh_bg_rho,pba->error_message);
+    class_alloc(pba->rho_gbh_bg,sizeof(double)*pba->x_size_gbh_bg_rho,pba->error_message);
+    class_alloc(pba->d2rho_gbh_bg,sizeof(double)*pba->x_size_gbh_bg_rho,pba->error_message);
     //the case of x=0:
+    pba->x_gbh_bg_rho[0] = 0.0;
     pba->rho_gbh_bg[0] = 7./8.*pow(_PI_,2)/15.;
     
-    for (row=1; row<pba->x_size_gbh_bg; row++) {//start from row=+1 because rho[row=0] corresponds to x=0 which is not in the table
-      status = fscanf(rho_table, "%lf", &tmp1); // Read the x value
+    for (row=1; row<pba->x_size_gbh_bg_rho; row++) {//start from row=+1 because rho[row=0] corresponds to x=0 which is not in the table
+      status = fscanf(rho_table, "%lf", &pba->x_gbh_bg_rho[row]); // Read the x value
       status = fscanf(rho_table, "%lf", &pba->rho_gbh_bg[row]); // Read rho values; +1 because rho[0] corresponds to x=0 which is not in the table
     }
     fclose(rho_table);
     /* Call spline interpolation: */
-    class_call(array_spline_table_lines(pba->x_gbh_bg,
-                                        pba->x_size_gbh_bg,
+    class_call(array_spline_table_lines(pba->x_gbh_bg_rho,
+                                        pba->x_size_gbh_bg_rho,
                                         pba->rho_gbh_bg,
                                         1,
                                         pba->d2rho_gbh_bg,
@@ -1898,7 +1945,7 @@ int background_gbh_init(
                 pba->error_message,
                 pba->error_message);
   
-  
+    }
   }
 
   /*performing quadrature for bg*/

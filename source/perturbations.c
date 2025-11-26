@@ -3903,9 +3903,15 @@ int perturbations_vector_init(
   ppv->q_size_ncdm = NULL;
 
   /*GBH_pt_start*/ 
-  /*scheme for n_max and l_max is set here.
+  /***********************************************
+  scheme for perturbations n_max and l_max is set here.
   DO NOT use l_max=2, because the truncation scheme of the hierarchy is gauge invariant only
-  for l_max>2. Otherwise, you'd have to modify the truncation scheme in derivs function.*/
+  for l_max>2. Otherwise, you'd have to modify the truncation scheme in derivs function.
+  IMPORTANT: If you plan to add your own scheme here, make sure to add in in input.c as well.
+  There is a line where pba->n_max_gbh is being computed based on ppr->gbh_FA_trigger. 
+  pba->n_max_gbh there should be equal to the maximum possible ppv->n_max_gbh+ppv->l_max_gbh that
+  is being defined here.
+  ***********************************************/
     if (pba->has_gbh == _TRUE_) {
       x = k * pba->gbh_horizon;
       class_test(ppr->gbh_nl_max_method!=0. && ppr->gbh_nl_max_method!=1., ppt->error_message,
@@ -3919,7 +3925,6 @@ int perturbations_vector_init(
         if(ppv->n_max_gbh<1){
           ppv->n_max_gbh = 1;
         }
-       //std::max(static_cast<int>(ceil(x/2.)),8);
       }
       else if(ppr->gbh_nl_max_method==1){ //this method will be removed in the future
         ppv->n_max_gbh = static_cast<int>(ceil(pow(ppr->gbh_FA_trigger,1.6)/5.)+3.); //should be 16 + 3 = 19
@@ -3930,9 +3935,8 @@ int perturbations_vector_init(
       
       class_test(ppv->n_max_gbh + ppv->l_max_gbh > pba->n_max_gbh, ppt->error_message,
                   "In GBH: The background w_n table size is smaller than the maximum index needed for w[] in perturbation equations. " 
-                  "Either don't use table and integrate (gbh_use_table=0), or increase the size of the table of w_n's to include more n's, " 
-                  "or decrease gbh_FA_trigger so that you transition to fluid approximation earlier, and so you would need a smaller n_max. "
-                  "The error is happening at y=k.T_fs= %e", x);
+                  "Most probably, you have added a new scheme for ppv->n_max_gbh and ppv->l_max_gbh but forgot to change pba->n_max_gbh "
+                  "accordingly in input.c. ");
     }
   /*GBH_pt_end*/
 
@@ -4109,8 +4113,6 @@ int perturbations_vector_init(
     /*GBH_pt_start*/
     if (pba->has_gbh == _TRUE_) {
     if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off) {
-      // ppv->n_max_gbh = 16;//std::max(static_cast<int>(ceil(pow(x,1.6)/5.)),16); 
-      // ppv->l_max_gbh = 8; //std::max(static_cast<int>(ceil(x/2.)),8);
       class_define_index(ppv->index_pt_Delta_gbh,_TRUE_,index_pt,ppv->n_max_gbh); /* pressure moments in Boltzmann hierarchy */
       class_define_index(ppv->index_pt_Sigma_gbh,_TRUE_,index_pt,(ppv->n_max_gbh)*(ppv->l_max_gbh)); /* angular moments in Boltzmann hierarchy */
     }
