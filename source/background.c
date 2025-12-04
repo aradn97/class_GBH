@@ -1814,7 +1814,8 @@ int background_gbh_init(
 
   FILE *w_table;
   FILE *rho_table;
-  char buffer[1024]; // Buffer for reading lines
+  char filename[_LINE_LENGTH_MAX_];
+  char buffer[_LINE_LENGTH_MAX_]; // Buffer for reading lines
   char *p;
   char *tp;
   int row, ncols, only_ws, status, index_q, tolexp;
@@ -1827,7 +1828,9 @@ int background_gbh_init(
 
   /*Do we need to read in a file to interpolate the distribution function? */
   if (pba->gbh_use_table==1) { //this part of the code prepares second order derivatives for spline interpolation. this is only once called in input.c
-    class_open(w_table,ppr->gbh_w_file,"r",pba->error_message);
+    class_sprintf(filename,"%s%s",ppr->base_path,ppr->gbh_w_file);
+    class_open(w_table,filename,"r",pba->error_message);
+
     // Find the number of columns:
     // Skip the header line
     fgets(buffer, sizeof(buffer), w_table);
@@ -1907,7 +1910,8 @@ int background_gbh_init(
                 pba->error_message);
 
     //Now read the table for energy density
-    class_open(rho_table,ppr->gbh_rho_file,"r",pba->error_message);
+    class_sprintf(filename,"%s%s",ppr->base_path,ppr->gbh_rho_file);
+    class_open(rho_table,filename,"r",pba->error_message);
     // Assuming the table size for rho can be different
     // Find the number of rows:
     // Skip the header line
