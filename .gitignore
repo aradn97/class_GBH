@@ -39,3 +39,7 @@ conformal_time_vs_a.pdf
 python/dist/classy-3.2.3-py3.7-linux-x86_64.egg
 python/classy.egg-info/SOURCES.txt
 python/dist/classy-3.2.3-py3.7-linux-x86_64.egg
+source/perturbations_stash.c
+python/classy.cpython-312-darwin.so
+python/classy.egg-info/PKG-INFO
+python/classy.egg-info/SOURCES.txt

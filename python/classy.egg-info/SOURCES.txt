@@ -1,7 +1,6 @@
 README
 setup.py
-/rds/general/user/an421/home/CLASS_GBH/class/python/../python/classy.cpp
-/rds/general/user/an421/home/CLASS_GBH/class/python/../python/classy.pyx
+/Users/aradn/Documents/Research/GBH/class_GBH/python/../python/classy.cpp
 classy.egg-info/PKG-INFO
 classy.egg-info/SOURCES.txt
 classy.egg-info/dependency_links.txt
