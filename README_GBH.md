@@ -159,3 +159,5 @@ DONE 72. do not hard code 1000 as the max x value of files
 73. Remove the computation of gbh pert init conditions by quadrature.
 74. ncdm caio FA: update, removing the explicit shear formula
 75. remove extra precision params use_formula and gbh_FA_caio_transition_rate
+76. /** - --> TODO: gauge transformation of delta, deltaP/rho (?) and theta using -= 3aH(1+w_ncdm) alpha for delta. */
+this is now done for ncdm. do it for gbh
