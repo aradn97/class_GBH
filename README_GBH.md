@@ -158,3 +158,4 @@ DONE 71. move w_n table to external
 DONE 72. do not hard code 1000 as the max x value of files
 73. Remove the computation of gbh pert init conditions by quadrature.
 74. ncdm caio FA: update, removing the explicit shear formula
+75. remove extra precision params use_formula and gbh_FA_caio_transition_rate
