@@ -105,11 +105,8 @@ DONE (because it directly enters in the equation for sigma') 30. Why isn't this 
 35. TBC: gravitational wave contribution of gbh species
 DONE 36. add has_source_delta_gbh, ppt->index_tp_delta_gbh (and for theta) everywhere needed, not just in perturbations_sources
 37. think about what you want to print in pt to outputs
-38. work out gauge transformations to sync gauge in print variables: if (pba->has_gbh_pt == _TRUE_) {
-        
-        /** - --> TODO: gauge transformation of delta, deltaP/rho (?) and theta using -= 3aH(1+w_ncdm) alpha for delta. */
-        
-      }
+38. /** TODO: use c_eff^2 (which is different from c_a^2 in DFA) and don't use 0.*/
+
 DONE 39. sync gauge eqs?
 DONE 40. be careful that n_max at perturbations doesn't exceed n_max of tables. we need at least pv->l_max_gbh+pv->n_max_gbh+1 columns of w
 DONE (cause we have no high-precision setting) 41. We have no analogue for ncdmfa_none

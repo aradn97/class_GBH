@@ -3396,11 +3396,11 @@ int perturbations_prepare_k_output(struct background * pba,
       /* GBH lowest moments */
       /*GBH_pt_start*/
       class_store_columntitle(ppt->scalar_titles,"delta_gbh",pba->has_gbh);
-      class_store_columntitle(ppt->scalar_titles,"delta1_gbh",pba->has_gbh);
       class_store_columntitle(ppt->scalar_titles,"theta_gbh",pba->has_gbh);
-      class_store_columntitle(ppt->scalar_titles,"theta1_gbh",pba->has_gbh);
       class_store_columntitle(ppt->scalar_titles,"sigma_gbh",pba->has_gbh);
-      class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"delta1_gbh",pba->has_gbh);
+      //class_store_columntitle(ppt->scalar_titles,"theta1_gbh",pba->has_gbh);
+      //class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh);
       /*GBH_pt_end*/
 
       /* Decaying cold dark matter */
@@ -8966,8 +8966,8 @@ int perturbations_print_variables(double tau,
   double p_prime_over_rho_ncdm = 0.0;
   double delta_ncdm_syn = 0.0;
   /** - ncdm sector ends */
-  double delta_gbh, delta1_gbh, theta_gbh, theta1_gbh, sigma_gbh, sigma1_gbh; //GBH_pt
-  double rho_gbh, p_gbh, pseudo_p_gbh, w_gbh, lambda_gbh, ca2_gbh; //GBH_pt
+  double delta_gbh, delta1_gbh, theta_gbh, theta1_gbh, sigma_gbh, sigma1_gbh, delta_gbh_syn; //GBH_pt
+  double rho_gbh, p_gbh, pseudo_p_gbh, w_gbh, w2_gbh, lambda_gbh, ca2_gbh, p_prime_over_rho_gbh; //GBH_pt
   double phi=0.,psi=0.,phi_prime=0.,alpha=0.; //GBH_pt_print
   double delta_temp=0., delta_chi=0.;
 
@@ -9251,17 +9251,21 @@ int perturbations_print_variables(double tau,
         delta_gbh = y[ppw->pv->index_pt_delta_gbh];
         theta_gbh = y[ppw->pv->index_pt_theta_gbh];
         sigma_gbh = y[ppw->pv->index_pt_sigma_gbh];
+        /** TODO: use c_eff^2 (which is different from c_a^2 in DFA) and don't use 0.
+         * also remove if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off){ from below after you do so; 
+         * because the gauge transf has to be applied to FA too.
+        */
         delta1_gbh=0.;
-        theta1_gbh=0.; 
-        sigma1_gbh=0.;  
+        // theta1_gbh=0.; 
+        // sigma1_gbh=0.;  
       } 
       else{
         delta_gbh = 3.*y[ppw->pv->index_pt_Delta_gbh];
         theta_gbh = k*y[ppw->pv->index_pt_Sigma_gbh];
         sigma_gbh = y[ppw->pv->index_pt_Sigma_gbh+1];
         delta1_gbh = y[ppw->pv->index_pt_Delta_gbh+1];
-        theta1_gbh = k*y[ppw->pv->index_pt_Sigma_gbh+ppw->pv->l_max_gbh];
-        sigma1_gbh = y[ppw->pv->index_pt_Sigma_gbh+ppw->pv->l_max_gbh+1];
+        // theta1_gbh = k*y[ppw->pv->index_pt_Sigma_gbh+ppw->pv->l_max_gbh];
+        // sigma1_gbh = y[ppw->pv->index_pt_Sigma_gbh+ppw->pv->l_max_gbh+1];
       }      
     }
     /*GBH_pt_end*/
@@ -9363,9 +9367,25 @@ int perturbations_print_variables(double tau,
       }
 
       if (pba->has_gbh == _TRUE_) {
-        
-        /** - --> TODO: gauge transformation of delta, deltaP/rho (?) and theta using -= 3aH(1+w_ncdm) alpha for delta. */
-        
+        rho_gbh = pvecback[pba->index_bg_rho_gbh];
+        w_gbh = pvecback[pba->index_bg_w_gbh+1];
+        w2_gbh = pvecback[pba->index_bg_w_gbh+2];
+
+        p_prime_over_rho_gbh = -a*H*w_gbh*(5.-w2_gbh/w_gbh);
+
+        /* store delta[Syn] before doing the gauge transformation */
+        delta_gbh_syn = delta_gbh;
+
+        /* gauge transformation for delta1,2, theta1,2 (shear is invariant) */
+        delta_gbh -= 3.*a*H*(1+w_gbh)*alpha;
+        theta_gbh += k*k*alpha;
+        if (ppw->approx[ppw->index_gbh_fa] == (int)gbh_fa_off){
+          delta1_gbh += alpha*p_prime_over_rho_gbh;
+          /**  TODO: also give theta1_gbh and sigma1_gbh to the output. 
+           for that, you only need to find the following gauge transf from sync to newtonian gauge. then uncomment them in this function
+          // theta1_gbh += ; */
+        }
+          
       }
 
       if (pba->has_dcdm == _TRUE_) {
@@ -9440,11 +9460,11 @@ int perturbations_print_variables(double tau,
     }
     /*GBH_pt_start*/
     class_store_double(dataptr, delta_gbh, pba->has_gbh, storeidx);
-    class_store_double(dataptr, delta1_gbh, pba->has_gbh, storeidx);
     class_store_double(dataptr, theta_gbh, pba->has_gbh, storeidx);
-    class_store_double(dataptr, theta1_gbh, pba->has_gbh, storeidx);
     class_store_double(dataptr, sigma_gbh, pba->has_gbh, storeidx);
-    class_store_double(dataptr, sigma1_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, delta1_gbh, pba->has_gbh, storeidx);
+    //class_store_double(dataptr, theta1_gbh, pba->has_gbh, storeidx);
+    //class_store_double(dataptr, sigma1_gbh, pba->has_gbh, storeidx);
     /*GBH_pt_end*/
     /* Decaying cold dark matter */
     class_store_double(dataptr, delta_dcdm, pba->has_dcdm, storeidx);
