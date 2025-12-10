@@ -9688,7 +9688,7 @@ int perturbations_derivs(double tau,
 
   /* for GBH species*/
   /*GBH_pt_start*/ 
-  double w_gbh, w2_gbh, rho_gbh,ca2_gbh,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,delta_l2=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; 
+  double w_gbh,w2_gbh,rho_gbh,ca2_gbh,c2_asp,k_fs,Omega_m,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,delta_l2=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; 
   double lambda_gbh,sigma_gbh;
   double * w;
   /*GBH_pt_end*/ 
@@ -10610,29 +10610,13 @@ int perturbations_derivs(double tau,
         sigma_gbh=y[pv->index_pt_sigma_gbh];
       }
       if (ppr->gbh_fluid_approximation == gbh_fa_caio) {
-        cvis2_gbh = 3.*w_gbh*ca2_gbh; 
         lambda_gbh = pvecback[pba->index_bg_P_min1_gbh] / rho_gbh; /*w_{-1} of gbh species*/
-        delta_newton = y[pv->index_pt_delta_gbh];
-        theta_newton = y[pv->index_pt_theta_gbh];
-        if(ppt->gauge == synchronous){
-          delta_newton -= 3.*a_prime_over_a*(1.+w_gbh)*pvecmetric[ppw->index_mt_alpha]; //gauge transformation
-          theta_newton += k2*pvecmetric[ppw->index_mt_alpha]; //gauge transformation
-        }
-        class_call(perturbations_shear_caio(pba,
-                                            ppt,        //just for keeping track of error messages
-                                            &ceff2_gbh, //this will be overwritten inside the function
-                                            &sigma_gbh, //this will be overwritten inside the function
-                                            w_gbh,
-                                            lambda_gbh,
-                                            ca2_gbh,
-                                            pvecback[pba->index_bg_horizon_gbh], 
-                                            delta_newton,
-                                            theta_newton,
-                                            a_prime_over_a,
-                                            a,
-                                            k
-                                            ), 
-                      pba->error_message, ppt->error_message);
+        c2_asp = (1. + w_gbh) / (1. + lambda_gbh) / 3.;
+        Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/(a_prime_over_a/a),2.);
+        k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp); 
+
+        cvis2_gbh = 3.*w_gbh*ca2_gbh; 
+        ceff2_gbh = ca2_gbh + (c2_asp - ca2_gbh) * exp(-4. / 3. * k_fs / k);
         sigma_gbh=y[pv->index_pt_sigma_gbh];
       }
 
