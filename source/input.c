@@ -2786,6 +2786,9 @@ int input_read_parameters_species(struct file_content * pfc,
         pba->gbh_use_table = 1;
       }
     }
+
+    // we need this in background struc solely because in background_free_input we don't have access to ppr.
+    pba->gbh_init_condition_integrate = ppr->gbh_init_condition_integrate; 
     
     /* This function computes the second derivatives of w_n's at given x values, preparing it for spline in background_functions. 
     It also finds pba->n_max_gbh_table.
@@ -2796,7 +2799,6 @@ int input_read_parameters_species(struct file_content * pfc,
 
     if (pba->gbh_use_table == 1){
       // Interpolate `rho` for GBH from the saved array of pre-computed values, for x=ma0/T0
-      pba->last_index_gbh = 0;
       if(pba->M_gbh<=pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1])
       {
         class_call(array_interpolate_spline(
@@ -2806,7 +2808,7 @@ int input_read_parameters_species(struct file_content * pfc,
                                             pba->d2rho_gbh_bg,
                                             1, //number of columns in rho_gbh_bg
                                             pba->M_gbh,  // this is x0 at present time: the value at which we want interpolation
-                                            &pba->last_index_gbh,
+                                            &pba->last_index_gbh_rho,
                                             &interpolated_rho,
                                             1, //we want interpolation for 1 column only
                                             pba->error_message),
@@ -5975,6 +5977,7 @@ int input_default_params(struct background *pba,
   T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
   pba->M_gbh = 0.06 / _k_B_ * _eV_ /T0_gbh;
   pba->gbh_use_table = 1; // default: use table for gbh.
+  pba->gbh_init_condition_integrate = 0; // default: use the exact initial conditions for perturbations in real space
   pba->n_max_gbh = 20;
   pba->n_max_gbh_table = 31;  //starts from 1
   pba->Omega0_gbh = 0.0;

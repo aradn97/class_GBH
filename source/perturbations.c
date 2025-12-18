@@ -7440,7 +7440,7 @@ int perturbations_total_stress_energy(
   int index_q,n_ncdm,idx;
   double epsilon,q,q2,cg2_ncdm,w_ncdm,rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm;
   double sigma_ncdm,lambda_ncdm,ca2_ncdm,delta_newton,theta_newton; /*ncdm_caio_fa*/
-  double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,ca2_gbh,cg2_gbh,lambda_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
+  double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,ca2_gbh,cg2_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
   double w_fld,dw_over_da_fld,integral_fld;
   double gwncdm;
   double rho_relativistic;
@@ -8967,7 +8967,7 @@ int perturbations_print_variables(double tau,
   double delta_ncdm_syn = 0.0;
   /** - ncdm sector ends */
   double delta_gbh, delta1_gbh, theta_gbh, theta1_gbh, sigma_gbh, sigma1_gbh, delta_gbh_syn; //GBH_pt
-  double rho_gbh, p_gbh, pseudo_p_gbh, w_gbh, w2_gbh, lambda_gbh, ca2_gbh, p_prime_over_rho_gbh; //GBH_pt
+  double rho_gbh, p_gbh, pseudo_p_gbh, w_gbh, w2_gbh, ca2_gbh, p_prime_over_rho_gbh; //GBH_pt
   double phi=0.,psi=0.,phi_prime=0.,alpha=0.; //GBH_pt_print
   double delta_temp=0., delta_chi=0.;
 
@@ -10630,7 +10630,7 @@ int perturbations_derivs(double tau,
         sigma_gbh=y[pv->index_pt_sigma_gbh];
       }
       if (ppr->gbh_fluid_approximation == gbh_fa_caio) {
-        lambda_gbh = pvecback[pba->index_bg_P_min1_gbh] / rho_gbh; /*w_{-1} of gbh species*/
+        lambda_gbh = pvecback[pba->index_bg_w_min1_gbh]; /*w_{-1} of gbh species*/
         c2_asp = (1. + w_gbh) / (1. + lambda_gbh) / 3.;
         Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/(a_prime_over_a/a),2.);
         k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp); 

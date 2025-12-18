@@ -1,4 +1,4 @@
-# Table of neutrino energy density. First column is x=m/T, with m the neutrino mass, and T the neutrino temperature with T=T0/a and T0=1.68x10^{-4}eV the neutrino temperature at the present time. The second column is the neutrino energy density, \rho, in units of temperature to the fourth power, i.e., \rho/T^{4}=\rho a^{4}/T0^{4}. Here x extends out to x=1000. At x>1000 one can use the nonrelativistic power-law scaling \rho \sim x.
+# Table of neutrino energy density. First column is x=m/T, with m the neutrino mass, and T the neutrino temperature with T=T0/a and T0 the neutrino temperature at the present time. The second column is the neutrino energy density, \rho, in units of temperature to the fourth power, i.e., \rho/T^{4}=\rho a^{4}/T0^{4}. Here x extends out to x=1000. At x>1000 one can extrapolate using the nonrelativistic power-law scaling \rho \sim x.
 
 0.001	0.5757269650733411
 0.0010139113857366793	0.5757269662406843
