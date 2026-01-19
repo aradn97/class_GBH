@@ -50,3 +50,9 @@ classy.egg-info/SOURCES.txt
 classy.egg-info/top_level.txt
 classy.egg-info/not-zip-safe
 source/perturbations.c
+default_gbh_py.ini
+repro.py
+default_ncdm_py.ini
+seminar_plots.ipynb
+test_gbh.ipynb
+test_gbh.ipynb

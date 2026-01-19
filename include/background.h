@@ -3,6 +3,7 @@
 #ifndef __BACKGROUND__
 #define __BACKGROUND__
 
+
 #include "common.h"
 #include "quadrature.h"
 #include "growTable.h"
@@ -99,6 +100,7 @@ struct background
                                              default value */
   int * ncdm_input_q_size; /**< Vector of numbers of q bins */
   double * ncdm_qmax;      /**< Vector of maximum value of q */
+  int ncdm_fluid_approximation;           /*FA method in ncdm perturbations. We need this so that if it is caio, we should compute P_{-1} in background*/
 
   /*GBH_bg_start*/
   int last_index_gbh_rho;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
@@ -108,6 +110,7 @@ struct background
   int gbh_init_condition_integrate; 
   double M_gbh;             /**< mass of gbh species in eV */
   double N_gbh;             /**< number of gbh species */
+  int gbh_fluid_approximation;            /*FA method in gbh perturbations. We need this so that if it is caio, we should compute w_{-1} in background */
   /*GBH_bg_end*/
 
   double Omega0_k;         /**< \f$ \Omega_{0_k} \f$: curvature contribution */

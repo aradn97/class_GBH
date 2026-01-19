@@ -150,13 +150,13 @@ DONE 65. save w_n's instead of P_n's?
 Warn in the paper or to the user how large the table needs to be
 68. remove ppr->gbh_nl_max_method==1
 69. The error n_max_gbh_table<n_max_gbh is not being triggered when n_max_gbh_table is not given in the input and the default 31 is being used. either remove n_max_gbh totally or put error if the default of n_max_gbh_table is smaller than n_max_gbh
-70. set the default in input.c to pba->gbh_use_table = 1, and put the table somewhere so that user does not have to provide it.
+DONE 70. set the default in input.c to pba->gbh_use_table = 1, and put the table somewhere so that user does not have to provide it.
 DONE 71. move w_n table to external
 DONE 72. do not hard code 1000 as the max x value of files
 73. Remove the computation of gbh pert init conditions by quadrature.
-74. ncdm caio FA: update, removing the explicit shear formula--> then remove index_bg_horizon_ncdm1 from background as well
+DONE 74. ncdm caio FA: update, removing the explicit shear formula--> then remove index_bg_horizon_ncdm1 from background as well
 DONE 75. remove extra precision params use_formula and gbh_FA_caio_transition_rate
 76. /** - --> TODO: gauge transformation of delta, deltaP/rho (?) and theta using -= 3aH(1+w_ncdm) alpha for delta. */
 this is now done for ncdm. do it for gbh
 77. compute w_-1 at background only if gbh_fa is caio.
-DONE 78. dont call class_call(background_ncdm_momenta(pba->q_gbh_bg, in the initial condition checker of background for gbh.
+DONE 78. dont call class_call(background_ncdm_momenta(pba->q_gbh_bg, ...)) in the initial condition checker of background for gbh.

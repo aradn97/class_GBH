@@ -113,6 +113,7 @@
  */
 
 #include "background.h"
+#include "perturbations.h" //because we need ncdmfa_caio
 
 /**
  * Background quantities at given redshift z.
@@ -518,7 +519,7 @@ int background_functions(
                                          &p_ncdm,
                                          NULL,
                                          &pseudo_p_ncdm,
-                                         &p_min1_ncdm),
+                                         (pba->ncdm_fluid_approximation == ncdmfa_caio) ? &p_min1_ncdm : NULL), /*ncdm_caio_fa*/
                  pba->error_message,
                  pba->error_message);
 
@@ -528,7 +529,9 @@ int background_functions(
       rho_tot += rho_ncdm;
       pvecback[pba->index_bg_p_ncdm1+n_ncdm] = p_ncdm;
       p_tot += p_ncdm;
-      pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] = p_min1_ncdm; /*ncdm_caio_fa*/
+      if (pba->ncdm_fluid_approximation == ncdmfa_caio){
+        pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] = p_min1_ncdm; /*ncdm_caio_fa*/
+      }
       pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm] = pseudo_p_ncdm;
 
       /** See e.g. Eq. A6 in 1811.00904. */
@@ -1221,7 +1224,9 @@ int background_indices(
   /* - indices for ncdm. We only define the indices for ncdm1
      (density, pressure, pseudo-pressure), the other ncdm indices
      are contiguous */
-  class_define_index(pba->index_bg_P_min1_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_caio_fa*/
+  if (pba->ncdm_fluid_approximation == ncdmfa_caio){
+    class_define_index(pba->index_bg_P_min1_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_caio_fa*/
+  }
   class_define_index(pba->index_bg_rho_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_pseudo_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);

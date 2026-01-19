@@ -2708,6 +2708,8 @@ int input_read_parameters_species(struct file_content * pfc,
       pba->Omega0_ncdm_tot += pba->Omega0_ncdm[n];
     }
 
+    pba->ncdm_fluid_approximation = ppr->ncdm_fluid_approximation; // this is added to bg structure to avoid calculating P_{-1} when FA is not caio. /*ncdm_caio_fa*/
+
   }
   class_test(pba->Omega0_ncdm_tot<0,errmsg,"You cannot set the NCDM density to negative values.");
   if (has_m_budget == _TRUE_) {
@@ -2789,6 +2791,8 @@ int input_read_parameters_species(struct file_content * pfc,
 
     // we need this in background struc solely because in background_free_input we don't have access to ppr.
     pba->gbh_init_condition_integrate = ppr->gbh_init_condition_integrate; 
+    // we need this in background struc because in background_functions we don't have access to ppr.
+    pba->gbh_fluid_approximation = ppr->gbh_fluid_approximation; // this is added to bg structure to avoid calculating P_{-1} when FA is not caio. /*ncdm_caio_fa*/
     
     /* This function computes the second derivatives of w_n's at given x values, preparing it for spline in background_functions. 
     It also finds pba->n_max_gbh_table.
@@ -3342,9 +3346,7 @@ int input_read_parameters_species(struct file_content * pfc,
   Omega_tot += pba->Omega0_idr;
   Omega_tot += pba->Omega0_ncdm_tot;
   Omega_tot += pba->Omega0_gbh;   //GBH_bg
-  /*The follwoing will be recalculated in background_solve after evolving the background.
-  However, we need Omega0_m in order to find the neutrino horizon; and for that we use the already known values of Omega0*/
-  pba->Omega0_m = pba->Omega0_b + pba->Omega0_cdm + pba->Omega0_idm + pba->Omega0_dcdmdr + pba->Omega0_ncdm_tot + pba->Omega0_gbh; /*ncdm_caio_fa*/
+  
   /* Step 1 */
   if (flag1 == _TRUE_){
     pba->Omega0_lambda = param1;
@@ -5969,7 +5971,9 @@ int input_default_params(struct background *pba,
   /** 5.g) ncdm degeneracy parameter */
   pba->deg_ncdm_default = 1.;
   pba->deg_ncdm = NULL;
-  /** 5.h) --> See read_parameters_background */
+  /** 5.h) ncdm FA method */
+  pba->ncdm_fluid_approximation = ncdmfa_CLASS; 
+  /** 5.i) --> See read_parameters_background */
 
 
   /*GBH_bg_start*/  //if you're considering changing this, also change its default value in precisons.h
@@ -5981,6 +5985,7 @@ int input_default_params(struct background *pba,
   pba->n_max_gbh = 20;
   pba->n_max_gbh_table = 31;  //starts from 1
   pba->Omega0_gbh = 0.0;
+  pba->gbh_fluid_approximation = gbh_fa_caio; 
   /*GBH_bg_end*/
 
   /** 6) Curvature density */
