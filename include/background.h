@@ -200,8 +200,7 @@ struct background
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
   int index_bg_pseudo_p_ncdm1;/**< another statistical momentum useful in ncdma approximation */
 
-  /*ncdm_caio_fa*/
-  int index_bg_horizon_ncdm1; /**< horizon scale of first ncdm species (others contiguous) */
+  
 
   int index_bg_w_min1_gbh;    /**< P_{-1} of species in GBH, from quadrature integration*/   //GBH_bg
   int index_bg_rho_gbh;       /**< density of species in GBH*/   //GBH_bg
@@ -286,7 +285,6 @@ struct background
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
-  int index_bi_horizon_ncdm1; /**< {C} horizon distance in Mpc for first ncdm species (others contiguous) */
   int index_bi_app_horizon_gbh;  /**< {C} approximate horizon distance in Mpc for gbh */
   //int index_bi_horizon_gbh;   /**< {C} horizon distance in Mpc for gbh */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
