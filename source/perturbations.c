@@ -6624,60 +6624,6 @@ int perturbations_initial_conditions(struct precision * ppr,
 
 
 
-/*ncdm_caio_FA*/
-/**
- * Evaluate the functional form of shear, given neutrino horizon size, overdensity and velocity, and background quantities.
- * This function is used whenever Caio's fluid approximation is demanded for either ncdm or GBH species.
- * @param pba            Input: pointer to background structure
- * @param ppt            Input: pointer to perturbations structure
- * @param ceff2          Input/Output: effective sound speed squared
- * @param sigma          Input/Output: shear
- * @param w              Input: equation of state parameter
- * @param lambda         Input: w_{-1}=P_{-1}/rho
- * @param ca2            Input: adiabatic sound speed squared
- * @param horizon        Input: horizon size = integral of free-streaming scale
- * @param delta          Input: overdensity in Newtonian gauge
- * @param theta          Input: velocity in Newtonian gauge
- * @param a_prime_over_a Input: a'/a
- * @param a              Input: scale factor
- * @param k              Input: wavenumber
-*/
-int perturbations_shear_caio(
-                             struct background * pba,
-                             struct perturbations * ppt,
-                             double * ceff2_out,
-                             double * sigma,
-                             double w,
-                             double lambda,
-                             double ca2,
-                             double horizon,
-                             double delta,
-                             double theta,
-                             double a_prime_over_a,
-                             double a,
-                             double k
-                             ) {
-
-  double H = a_prime_over_a/a, k2 = k*k, k_fs, k_horizon;
-  double c2_asp = (1. + w) / (1. + lambda) / 3., c_eff2;
-  double Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/H,2.);
-  class_test(c2_asp<0., ppt->error_message,
-        "ncdm asymptotic sound speed squared is negative.");
-
-  k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp); 
-  k_horizon = 2. * _PI_ / horizon; 
-  
-  c_eff2 = ca2 + (c2_asp - ca2) * exp(-4. / 3. * k_fs / k);
-  if (ceff2_out != NULL)    
-    * ceff2_out = c_eff2;
-  * sigma = 1./k2 * (-2./5. * k_horizon / k * exp(-k_horizon / k) * c_eff2 / (1. + w) * k2 * delta + k / k_fs * exp(-5.*k_fs/k) * w * w * theta);
-  
-  return _SUCCESS_;
-}
-
-
-
-
 /**
  * Evaluate background/thermodynamics at \f$ \tau \f$, infer useful flags / time scales for integrating perturbations.
  *
@@ -7439,7 +7385,6 @@ int perturbations_total_stress_energy(
   double rho_plus_p_ncdm;
   int index_q,n_ncdm,idx;
   double epsilon,q,q2,cg2_ncdm,w_ncdm,rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm;
-  double sigma_ncdm,lambda_ncdm,ca2_ncdm,delta_newton,theta_newton; /*ncdm_caio_fa*/
   double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,ca2_gbh,cg2_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
   double w_fld,dw_over_da_fld,integral_fld;
   double gwncdm;
@@ -7712,46 +7657,17 @@ int perturbations_total_stress_energy(
           rho_plus_p_ncdm = rho_ncdm_bg + p_ncdm_bg;
           w_ncdm = p_ncdm_bg/rho_ncdm_bg;
           cg2_ncdm = w_ncdm*(1.0-1.0/(3.0+3.0*w_ncdm)*(3.0*w_ncdm-2.0+pseudo_p_ncdm/p_ncdm_bg));
-          if ((ppr->ncdm_fluid_approximation == ncdmfa_caio) && (ppt->gauge == newtonian)){//synchronous gauge will be dealt with later
-            lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
-            ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
-            delta_newton = y[idx];
-            theta_newton = y[idx+1];
-            class_call(perturbations_shear_caio(pba,
-                                                ppt,
-                                                NULL, 
-                                                &sigma_ncdm, //this will be overwritten inside the function
-                                                w_ncdm,
-                                                lambda_ncdm,
-                                                ca2_ncdm,
-                                                ppw->pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
-                                                delta_newton,
-                                                theta_newton,
-                                                a_prime_over_a,
-                                                a,
-                                                k
-                                                ), 
-                        pba->error_message, ppt->error_message);
-          }
+
           if ((ppt->has_source_delta_ncdm == _TRUE_) || (ppt->has_source_theta_ncdm == _TRUE_) || (ppt->has_source_delta_m == _TRUE_)) {
             ppw->delta_ncdm[n_ncdm] = y[idx];
             ppw->theta_ncdm[n_ncdm] = y[idx+1];
-            if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
-              ppw->shear_ncdm[n_ncdm] = y[idx+2];
-            else if (ppt->gauge == newtonian) {/*ncdm_caio_fa*/
-              //the case of synchronous gauge needs alpha, and so is deferred to later after all species but before fluid.
-              ppw->shear_ncdm[n_ncdm] = sigma_ncdm;
-            }          
+            ppw->shear_ncdm[n_ncdm] = y[idx+2];         
           }
 
           ppw->delta_rho += rho_ncdm_bg*y[idx];
           ppw->rho_plus_p_theta += rho_plus_p_ncdm*y[idx+1];
-          if(ppr->ncdm_fluid_approximation != ncdmfa_caio)
-            ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
-          else if(ppt->gauge == newtonian){ /*ncdm_caio_fa*/
-            //the case of synchronous gauge needs alpha, and so is deferred to later after all species but before fluid.
-            ppw->rho_plus_p_shear += rho_plus_p_ncdm*sigma_ncdm; 
-          }
+          ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
+          
           ppw->delta_p += cg2_ncdm*rho_ncdm_bg*y[idx];
 
           ppw->rho_plus_p_tot += rho_plus_p_ncdm;
@@ -7903,70 +7819,6 @@ int perturbations_total_stress_energy(
 
 
 
-
-    /* ncdm and gbh shear computation in the case of caio fluid approximation in sync gauge:
-       this computation needs alpha; so we must know ppw->delta_rho and ppw->rho_plus_p_theta. 
-       Therefore, no new species (apart from fluid) are allowed to contribute to total delta_rho
-       and rho_plus_p_theta after the following block. Although total shear is affected here,
-       there is no interference with scalar field because in scf, total shear is only needed
-       in Newtonian gauge.*/
-    if ((pba->has_ncdm == _TRUE_) && (ppt->gauge == synchronous) && (ppr->ncdm_fluid_approximation == ncdmfa_caio)){
-      idx = ppw->pv->index_pt_psi0_ncdm1;
-      if (ppw->approx[ppw->index_ap_ncdmfa] == (int)ncdmfa_on){
-        for (n_ncdm=0; n_ncdm < pba->N_ncdm; n_ncdm++){
-          rho_ncdm_bg = ppw->pvecback[pba->index_bg_rho_ncdm1+n_ncdm];
-          p_ncdm_bg = ppw->pvecback[pba->index_bg_p_ncdm1+n_ncdm];
-          pseudo_p_ncdm = ppw->pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm];
-          w_ncdm = p_ncdm_bg/rho_ncdm_bg;
-          lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
-          ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
-
-          s2sq = ppw->s_l[2]*ppw->s_l[2];
-          //we need to compute alpha, and that depends on whether we have fld or not.
-          if(pba->has_fld == _FALSE_)
-            alpha = (y[ppw->pv->index_pt_eta]+1.5*a2/k2/s2sq*(ppw->delta_rho+3*a_prime_over_a/k2*ppw->rho_plus_p_theta))/a_prime_over_a;
-          else if(pba->use_ppf == _FALSE_){
-            class_call(background_w_fld(pba,a,&w_fld,&dw_over_da_fld,&integral_fld), pba->error_message, ppt->error_message);
-            ppw->delta_rho_fld = ppw->pvecback[pba->index_bg_rho_fld]*y[ppw->pv->index_pt_delta_fld];
-            ppw->rho_plus_p_theta_fld = (1.+w_fld)*ppw->pvecback[pba->index_bg_rho_fld]*y[ppw->pv->index_pt_theta_fld];
-            alpha = (y[ppw->pv->index_pt_eta]+1.5*a2/k2/s2sq*((ppw->delta_rho+ppw->delta_rho_fld)+3*a_prime_over_a/k2*(ppw->rho_plus_p_theta+ppw->rho_plus_p_theta_fld)))/a_prime_over_a;
-          }
-          else{
-            c_gamma_k_H_square = pow(pba->c_gamma_over_c_fld*k/a_prime_over_a,2)*pba->cs2_fld;
-            if (c_gamma_k_H_square > ppr->c_gamma_k_H_square_max)
-              Gamma_fld = 0.;
-            else
-              Gamma_fld = y[ppw->pv->index_pt_Gamma_fld];
-            alpha = (y[ppw->pv->index_pt_eta]+1.5*a2/k2/s2sq*(ppw->delta_rho+3*a_prime_over_a/k2*ppw->rho_plus_p_theta)-Gamma_fld)/a_prime_over_a; //borrowed from fluid part (next block)
-          }
-          
-          delta_newton = y[idx] - 3.*a_prime_over_a*(1.+w_ncdm)*alpha; //gauge transformation 
-          theta_newton = y[idx+1] + k2*alpha; //gauge transformation
-          class_call(perturbations_shear_caio(pba,
-                                              ppt,
-                                              NULL, 
-                                              &sigma_ncdm, //this will be overwritten inside the function
-                                              w_ncdm,
-                                              lambda_ncdm,
-                                              ca2_ncdm,
-                                              ppw->pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
-                                              delta_newton,
-                                              theta_newton,
-                                              a_prime_over_a,
-                                              a,
-                                              k
-                                              ), 
-                      pba->error_message, ppt->error_message);
-          //set the source for shear
-          if ((ppt->has_source_delta_ncdm == _TRUE_) || (ppt->has_source_theta_ncdm == _TRUE_) || (ppt->has_source_delta_m == _TRUE_)) {
-            ppw->shear_ncdm[n_ncdm] = sigma_ncdm; //this was deferred to here in synchronous gauge
-          }
-          ppw->rho_plus_p_shear += rho_plus_p_ncdm*sigma_ncdm; //this was deferred to here in synchronous gauge
-
-          idx += ppw->pv->l_max_ncdm[n_ncdm]+1;
-        }
-      }
-    }
 
     /* fluid contribution */
     if (pba->has_fld == _TRUE_) {
@@ -8956,7 +8808,6 @@ int perturbations_print_variables(double tau,
   int n_ncdm;
   double *delta_ncdm=NULL, *theta_ncdm=NULL, *shear_ncdm=NULL, *delta_p_over_delta_rho_ncdm=NULL;
   double rho_ncdm_bg, p_ncdm_bg, pseudo_p_ncdm, w_ncdm;
-  double a_prime_over_a,delta_newton,theta_newton,lambda_ncdm,ca2_ncdm; /*ncdm_caio_fa*/
   double rho_delta_ncdm = 0.0;
   double rho_plus_p_theta_ncdm = 0.0;
   double rho_plus_p_shear_ncdm = 0.0;
@@ -9171,35 +9022,9 @@ int perturbations_print_variables(double tau,
           w_ncdm = p_ncdm_bg/rho_ncdm_bg;
 
           delta_ncdm[n_ncdm] = y[idx];
-          theta_ncdm[n_ncdm] = y[idx+1];
-          if(ppr->ncdm_fluid_approximation != ncdmfa_caio)  
-            shear_ncdm[n_ncdm] = y[idx+2];
-          else{ /*ncdm_caio_fa*/
-            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
-            ca2_ncdm = w_ncdm/3.0/(1.0+w_ncdm)*(5.0-pseudo_p_ncdm/p_ncdm_bg); /* adiabatic sound speed */ 
-            delta_newton = delta_ncdm[n_ncdm];
-            theta_newton = theta_ncdm[n_ncdm];
-            a_prime_over_a = a * H;
-            if(ppt->gauge == synchronous){
-              delta_newton -= 3.*a_prime_over_a*(1.+w_ncdm)*alpha;
-              theta_newton += k2*alpha; //gauge transformation
-            }
-            class_call(perturbations_shear_caio(pba,
-                                                ppt,
-                                                NULL, 
-                                                &shear_ncdm[n_ncdm], //this will be overwritten inside the function
-                                                w_ncdm,
-                                                lambda_ncdm,
-                                                ca2_ncdm,
-                                                ppw->pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
-                                                delta_newton,
-                                                theta_newton,
-                                                a_prime_over_a,
-                                                a,
-                                                k
-                                                ), 
-                         pba->error_message, ppt->error_message);
-          }
+          theta_ncdm[n_ncdm] = y[idx+1]; 
+          shear_ncdm[n_ncdm] = y[idx+2];
+          
           //This is the adiabatic sound speed:
           delta_p_over_delta_rho_ncdm[n_ncdm] = w_ncdm*(1.0-1.0/(3.0+3.0*w_ncdm)*(3.0*w_ncdm-2.0+pseudo_p_ncdm/p_ncdm_bg));
           idx += ppw->pv->l_max_ncdm[n_ncdm]+1;
@@ -9704,7 +9529,6 @@ int perturbations_derivs(double tau,
   double rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm,w_ncdm,ca2_ncdm,ceff2_ncdm=0.,cvis2_ncdm=0.;
   /*ncdm_caio_fa*/
   double lambda_ncdm,sigma_ncdm;
-  double delta_newton,theta_newton;
 
   /* for GBH species*/
   /*GBH_pt_start*/ 
@@ -10473,28 +10297,14 @@ int perturbations_derivs(double tau,
           }
           /*ncdm_caio_fa*/
           if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
-            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg; 
-            delta_newton = y[idx];
-            theta_newton = y[idx+1];
-            if(ppt->gauge == synchronous){
-             delta_newton -= 3.*a_prime_over_a*(1.+w_ncdm)*pvecmetric[ppw->index_mt_alpha]; //gauge transformation
-             theta_newton += k2*pvecmetric[ppw->index_mt_alpha]; //gauge transformation
-            }
-            class_call(perturbations_shear_caio(pba,
-                                                ppt,
-                                                &ceff2_ncdm, //this will be overwritten inside the function
-                                                &sigma_ncdm, //this will be overwritten inside the function
-                                                w_ncdm,
-                                                lambda_ncdm,
-                                                ca2_ncdm,
-                                                pvecback[pba->index_bg_horizon_ncdm1+n_ncdm], 
-                                                delta_newton,
-                                                theta_newton,
-                                                a_prime_over_a,
-                                                a,
-                                                k
-                                                ), 
-                       pba->error_message, ppt->error_message);
+            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;   
+            c2_asp = (1. + w_ncdm) / (1. + lambda_ncdm) / 3.;
+            Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/(a_prime_over_a/a),2.);
+            k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp); 
+
+            cvis2_ncdm = 3.*w_ncdm*ca2_ncdm; 
+            ceff2_ncdm = ca2_ncdm + (c2_asp - ca2_ncdm) * exp(-4. / 3. * k_fs / k);
+            sigma_ncdm=y[idx+2];
           }
 
           /** - -----> exact continuity equation */
@@ -10524,16 +10334,10 @@ int perturbations_derivs(double tau,
 
           }
 
-          if (ppr->ncdm_fluid_approximation == ncdmfa_CLASS) {
+          if ((ppr->ncdm_fluid_approximation == ncdmfa_CLASS) || (ppr->ncdm_fluid_approximation == ncdmfa_caio)) {
 
             dy[idx+2] = -3.0*(a_prime_over_a*(2./3.-ca2_ncdm-pseudo_p_ncdm/p_ncdm_bg/3.)+1./tau)*y[idx+2]
               +8.0/3.0*cvis2_ncdm/(1.0+w_ncdm)*s_l[2]*(y[idx+1]+metric_ufa_class);
-
-          }
-          /*ncdm_caio_fa*/
-          if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
-
-            dy[idx+2] = 0.0; //instead of removing this index from the system, I am setting it to a constant, equal to its value at the transition from Boltzmann hierarchy to fluid approximation
 
           }
 
