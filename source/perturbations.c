@@ -5766,8 +5766,6 @@ int perturbations_initial_conditions(struct precision * ppr,
   int n,ll; 
   double l_factorial = 1.,ll_1_double_factorial = 1.;//l_factorial =l!, ll_1_double_factorial = (2l-1)!!
   double rho_delta_gbh = 0.0,rho_plus_p_shear_gbh = 0.0,factor,q2,a2;
-  double * Psi_gbh;
-  double * w;
   /*GBH_pt_end*/
   double rho_r,rho_m,rho_nu,rho_m_over_rho_r, rho_cdm =0.;
   double fracnu,fracg,fracb,fraccdm = 0.,fracidm = 0.;
@@ -6329,6 +6327,7 @@ int perturbations_initial_conditions(struct precision * ppr,
         }
         else{
           if (ppr->gbh_init_condition_integrate==_FALSE_){ //this works faster because there is no q integration
+            double * w;
             w = &ppw->pvecback[pba->index_bg_w_gbh];//vector for w_n
             for(n=0;n<ppw->pv->n_max_gbh;n++){
               ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] = ((2.*n+3.)*w[n]-(2.*n-1.)*w[n+1])*delta_ur/4.;
@@ -6337,67 +6336,68 @@ int perturbations_initial_conditions(struct precision * ppr,
             } 
           }
           else{ //start from initial conditions on psi_l's and integrate over q to get the init conditions for delta_n and f_n,ell
-          a2=a*a;                    
-          factor = pba->factor_gbh/pow(a,4);
-          /*  Psi_gbh will contain the initial conditions for the gbh perturbations in momentum space, 
-          Psi_gbh = [Psi_0, Psi_1, Psi_2, Psi_3] for each momentum bin. */
-          class_alloc(Psi_gbh, 4 * pba->q_size_gbh * sizeof(double), ppt->error_message); // 4 is because we are setting f_n,l=0 for l>3. 
-          idx = 0;
-
-          for (index_q=0; index_q < pba->q_size_gbh; index_q ++) { //here define the gbh initial condition in momentum space
-
-            q = pba->q_gbh[index_q];
-            q2 = q*q;
-            epsilon = sqrt(q2+pba->M_gbh*pba->M_gbh*a2);
-
-            Psi_gbh[idx] = -0.25 * delta_ur * pba->dlnf0_dlnq_gbh[index_q];
-            Psi_gbh[idx+1] =  -epsilon/3./q/k*theta_ur* pba->dlnf0_dlnq_gbh[index_q];
-            Psi_gbh[idx+2] = -0.5 * shear_ur * pba->dlnf0_dlnq_gbh[index_q];
-            Psi_gbh[idx+3] = -0.25 * l3_ur * pba->dlnf0_dlnq_gbh[index_q];
-
-            //Jump to next momentum bin:
-            idx+=4;
-          }
-                    
-          for(n=0;n<ppw->pv->n_max_gbh;n++) //momentum integrals for gbh perturbations is only used once in the code, and it's here in this loop
-          {
-            rho_delta_gbh = 0.0;
+            double * Psi_gbh;
+            a2=a*a;                    
+            factor = pba->factor_gbh/pow(a,4);
+            /*  Psi_gbh will contain the initial conditions for the gbh perturbations in momentum space, 
+            Psi_gbh = [Psi_0, Psi_1, Psi_2, Psi_3] for each momentum bin. */
+            class_alloc(Psi_gbh, 4 * pba->q_size_gbh * sizeof(double), ppt->error_message); // 4 is because we are setting f_n,l=0 for l>3. 
             idx = 0;
-            for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
+
+            for (index_q=0; index_q < pba->q_size_gbh; index_q ++) { //here define the gbh initial condition in momentum space
+
               q = pba->q_gbh[index_q];
               q2 = q*q;
               epsilon = sqrt(q2+pba->M_gbh*pba->M_gbh*a2);
 
-              rho_delta_gbh += q2*epsilon*pow(q/epsilon,2*n)*pba->weights_gbh[index_q]*Psi_gbh[idx];
+              Psi_gbh[idx] = -0.25 * delta_ur * pba->dlnf0_dlnq_gbh[index_q];
+              Psi_gbh[idx+1] =  -epsilon/3./q/k*theta_ur* pba->dlnf0_dlnq_gbh[index_q];
+              Psi_gbh[idx+2] = -0.5 * shear_ur * pba->dlnf0_dlnq_gbh[index_q];
+              Psi_gbh[idx+3] = -0.25 * l3_ur * pba->dlnf0_dlnq_gbh[index_q];
+
               //Jump to next momentum bin:
               idx+=4;
             }
-            rho_delta_gbh *= factor/3.;
-            ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] = rho_delta_gbh/ppw->pvecback[pba->index_bg_rho_gbh];
-            
-            l_factorial = 1.;
-            ll_1_double_factorial = 1.;
-            for(ll=1;ll<4;ll++)
+                      
+            for(n=0;n<ppw->pv->n_max_gbh;n++) //momentum integrals for gbh perturbations is only used once in the code, and it's here in this loop
             {
-              l_factorial *= 1.*ll;
-              ll_1_double_factorial *= (2.*ll-1.);
-              rho_plus_p_shear_gbh = 0.0;
+              rho_delta_gbh = 0.0;
               idx = 0;
               for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
                 q = pba->q_gbh[index_q];
                 q2 = q*q;
                 epsilon = sqrt(q2+pba->M_gbh*pba->M_gbh*a2);
 
-                rho_plus_p_shear_gbh += q2*epsilon*pow(q/epsilon,2*n+ll)*pba->weights_gbh[index_q]*Psi_gbh[idx+ll];
+                rho_delta_gbh += q2*epsilon*pow(q/epsilon,2*n)*pba->weights_gbh[index_q]*Psi_gbh[idx];
                 //Jump to next momentum bin:
                 idx+=4;
               }
-              rho_plus_p_shear_gbh *= l_factorial/ll_1_double_factorial*factor;
-              ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh+ll-1] = rho_plus_p_shear_gbh/(ppw->pvecback[pba->index_bg_rho_gbh]*(1.+ppw->pvecback[pba->index_bg_w_gbh+1]));
-              }
-            }
+              rho_delta_gbh *= factor/3.;
+              ppw->pv->y[ppw->pv->index_pt_Delta_gbh+n] = rho_delta_gbh/ppw->pvecback[pba->index_bg_rho_gbh];
+              
+              l_factorial = 1.;
+              ll_1_double_factorial = 1.;
+              for(ll=1;ll<4;ll++)
+              {
+                l_factorial *= 1.*ll;
+                ll_1_double_factorial *= (2.*ll-1.);
+                rho_plus_p_shear_gbh = 0.0;
+                idx = 0;
+                for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
+                  q = pba->q_gbh[index_q];
+                  q2 = q*q;
+                  epsilon = sqrt(q2+pba->M_gbh*pba->M_gbh*a2);
 
-          free(Psi_gbh);
+                  rho_plus_p_shear_gbh += q2*epsilon*pow(q/epsilon,2*n+ll)*pba->weights_gbh[index_q]*Psi_gbh[idx+ll];
+                  //Jump to next momentum bin:
+                  idx+=4;
+                }
+                rho_plus_p_shear_gbh *= l_factorial/ll_1_double_factorial*factor;
+                ppw->pv->y[ppw->pv->index_pt_Sigma_gbh+n*ppw->pv->l_max_gbh+ll-1] = rho_plus_p_shear_gbh/(ppw->pvecback[pba->index_bg_rho_gbh]*(1.+ppw->pvecback[pba->index_bg_w_gbh+1]));
+                }
+              }
+
+            free(Psi_gbh);
           }
         }
       }
@@ -6737,7 +6737,6 @@ int perturbations_approximations(
     if (ppw->pvecthermo[pth->index_th_dkappa] == 0.) {
 
       ppw->approx[ppw->index_ap_tca] = (int)tca_off;
-      //printf("\nTCA OFF ERROR3\n");fflush(stdout);//test
 
     }
 
@@ -6764,7 +6763,6 @@ int perturbations_approximations(
       }
       else {
         ppw->approx[ppw->index_ap_tca] = (int)tca_off;
-        //printf("\nTCA OFF ERROR4\n");fflush(stdout);//test
       }
 
 
@@ -6775,7 +6773,6 @@ int perturbations_approximations(
             printf("switched off tca for k = %5.e because of idm_g at tau = %5.e\n", k, tau);
           }
           ppw->approx[ppw->index_ap_tca] = (int)tca_off;
-          //printf("\nTCA OFF ERROR5\n");fflush(stdout);//test
         }
       }
     }
@@ -6787,7 +6784,6 @@ int perturbations_approximations(
           printf("switched off tca for k = %5.e because of idm_b at tau = %5.e\n", k, tau);
         }
         ppw->approx[ppw->index_ap_tca] = (int)tca_off;
-        //printf("\nTCA OFF ERROR0\n");fflush(stdout);//test
       }
     }
 
@@ -6901,7 +6897,6 @@ int perturbations_approximations(
     if (ppw->pvecthermo[pth->index_th_dkappa] == 0.) {
 
       ppw->approx[ppw->index_ap_tca] = (int)tca_off;
-      //printf("\nTCA OFF ERROR1\n");fflush(stdout);//test
 
     }
 
@@ -6919,7 +6914,6 @@ int perturbations_approximations(
       }
       else {
         ppw->approx[ppw->index_ap_tca] = (int)tca_off;
-        //printf("\nTCA OFF ERROR2\n");fflush(stdout);//test
       }
     }
 
@@ -9534,7 +9528,6 @@ int perturbations_derivs(double tau,
   /*GBH_pt_start*/ 
   double w_gbh,w2_gbh,rho_gbh,ca2_gbh,c2_asp,k_fs,Omega_m,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,delta_l2=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.; 
   double lambda_gbh,sigma_gbh;
-  double * w;
   /*GBH_pt_end*/ 
 
   /* for use with curvature */
@@ -10477,6 +10470,7 @@ int perturbations_derivs(double tau,
 
       }
       else{//GBH eqs 
+        double * w;
         w = &pvecback[pba->index_bg_w_gbh];//vector for w_n
         for(n=0;n<pv->n_max_gbh;n++)
         {         

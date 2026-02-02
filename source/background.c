@@ -412,7 +412,7 @@ int background_functions(
   /*GBH_bg_start*/
   double current_x_value; 
   double interpolated_integral,interpolated_rho; // interpolated values of rho
-  double *P_n; // Pointer to store P_n values for gbh
+  
   /*GBH_bg_end*/
 
   /** - initialize local variables */
@@ -549,7 +549,7 @@ int background_functions(
 
   /*GBH_bg_start*/
   if(pba->has_gbh == _TRUE_){
-
+    
     if (pba->gbh_use_table == 1){
       current_x_value = pba->M_gbh * a;
       // Interpolate `rho` for GBH from the saved array of pre-computed values
@@ -621,6 +621,7 @@ int background_functions(
       }      
     }
     else{ //no table for rho or w's; everything should be computed using quadrature integration
+      double *P_n; // Pointer to store P_n values for gbh
       class_alloc(P_n, sizeof(double) * (pba->n_max_gbh-1), pba->error_message); //starts from P_2.
       /* function returning background gbh quantities from quadrature integration (only
           those for which non-NULL pointers are passed) */
