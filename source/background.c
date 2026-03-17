@@ -543,7 +543,9 @@ int background_functions(
       /* (rho_ncdm1 - 3 p_ncdm1) is the "non-relativistic" contribution
          to rho_ncdm1 */
       rho_m += rho_ncdm - 3.* p_ncdm;
+
     }
+    pvecback[pba->index_bg_app_horizon_ncdm] = pvecback_B[pba->index_bi_app_horizon_ncdm]; // approximate neutrino horizon T
   }
 
 
@@ -1240,6 +1242,8 @@ int background_indices(
   /* -> comoving horizon of massive neutrinos solved by gbh */
   class_define_index(pba->index_bg_app_horizon_gbh,pba->has_gbh,index_bg,1); 
   /*GBH_pt_end*/
+
+  class_define_index(pba->index_bg_app_horizon_ncdm,pba->has_ncdm,index_bg,1); 
   
 
   /* - index for dcdm */
@@ -1342,6 +1346,9 @@ int background_indices(
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
   /* -> energy density in gbh zeroth moment (energy density/3) */ 
   //class_define_index(pba->index_bi_P0_gbh,pba->has_gbh,index_bi,1); //GBH_bg
+
+  
+  class_define_index(pba->index_bi_app_horizon_ncdm,pba->has_ncdm,index_bi,1); 
   /*GBH_pt_start*/
   /* -> comoving horizon of massive neutrinos solved by gbh */
   class_define_index(pba->index_bi_app_horizon_gbh,pba->has_gbh,index_bi,1); 
@@ -2606,6 +2613,11 @@ int background_solve(
   if (pba->has_gbh == _TRUE_) { //GBH_pt
     pba->gbh_horizon = pvecback_integration[pba->index_bi_app_horizon_gbh];
   }
+
+  if (pba->has_ncdm == _TRUE_) { 
+    pba->ncdm_horizon = pvecback_integration[pba->index_bi_app_horizon_ncdm];
+  }
+
   /* -> contribution of decaying dark matter and dark radiation to the critical density today: */
   if (pba->has_dcdm == _TRUE_) {
     pba->Omega0_dcdm = pvecback_integration[pba->index_bi_rho_dcdm]/pba->H0/pba->H0;
@@ -2698,6 +2710,10 @@ int background_solve(
       printf("    GBH details:\n");
       printf("     -> Omega0_gbh = %f\n",pba->Omega0_gbh);
       printf("     -> gbh_horizon = %f Mpc\n",pba->gbh_horizon);
+    }
+
+    if (pba->has_ncdm == _TRUE_) {
+      printf("     -> ncdm_horizon = %f Mpc\n",pba->ncdm_horizon);
     }
     if (pba->has_scf == _TRUE_) {
       printf("    Scalar field details:\n");
@@ -3026,6 +3042,9 @@ int background_initial_conditions(
       pvecback_integration[pba->index_bi_app_horizon_gbh] = pvecback_integration[pba->index_bi_tau]; //equal to tau initially
   }
   /*GBH_pt_end*/
+  if (pba->has_ncdm == _TRUE_) {
+      pvecback_integration[pba->index_bi_app_horizon_ncdm] = pvecback_integration[pba->index_bi_tau]; //equal to tau initially
+  }
 
   /** - compute initial sound horizon, assuming \f$ c_s=1/\sqrt{3} \f$ initially */
   pvecback_integration[pba->index_bi_rs] = pvecback_integration[pba->index_bi_tau]/sqrt(3.);
@@ -3170,6 +3189,7 @@ int background_output_titles(
     }
   }
   /*GBH_bg_end*/
+  class_store_columntitle(titles,"(.)app_horizon_ncdm",pba->has_ncdm); 
   /*GBH_pt_start*/
   class_store_columntitle(titles,"(.)app_horizon_gbh",pba->has_gbh); 
   class_store_columntitle(titles,"(.)horizon_gbh",pba->has_gbh); 
@@ -3261,6 +3281,7 @@ int background_output_data(
       }
     }
     /*GBH_bg_end*/
+    class_store_double(dataptr,pvecback[pba->index_bg_app_horizon_ncdm],pba->has_ncdm,storeidx);
     /*GBH_pt_start*/
     class_store_double(dataptr,pvecback[pba->index_bg_app_horizon_gbh],pba->has_gbh,storeidx);
     /*GBH_pt_end*/
@@ -3402,6 +3423,10 @@ int background_derivs(
     dy[pba->index_bi_app_horizon_gbh] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh * a / 3., 2.)));
   }
   /*GBH_pt_end*/
+
+  if (pba->has_ncdm == _TRUE_){
+    dy[pba->index_bi_app_horizon_ncdm] = 1. / (a * H * sqrt(1. + pow(pba->M_ncdm[0] * a / 3., 2.)));
+  }
 
   if (pba->has_fld == _TRUE_) {
     /** - Compute fld density \f$ d\rho/dloga = -3 (1+w_{fld}(a)) \rho \f$ */

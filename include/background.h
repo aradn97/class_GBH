@@ -148,6 +148,7 @@ struct background
   double age; /**< age in Gyears */
   double conformal_age; /**< conformal age in Mpc */
   double gbh_horizon; /**< conformal free streaming length of GBH species in Mpc */
+  double ncdm_horizon; /**< conformal free streaming length of GBH species in Mpc */
   double K; /**< \f$ K \f$: Curvature parameter \f$ K=-\Omega0_k*a_{today}^2*H_0^2\f$; */
   int sgnK; /**< K/|K|: -1, 0 or 1 */
   double Neff; /**< so-called "effective neutrino number", computed at earliest time in interpolation table */
@@ -209,6 +210,7 @@ struct background
   int index_bg_rho_gbh;       /**< density of species in GBH*/   //GBH_bg
   int index_bg_w_gbh;         /**< equation of state of species in GBH*/   //GBH_bg
   int index_bg_app_horizon_gbh;     /**< approximate comoving horizon distance of species in GBH*/   //GBH_pt
+  int index_bg_app_horizon_ncdm;     /**< approximate comoving horizon distance of species in ncdm*/  
   //int index_bg_horizon_gbh;   /**< comoving horizon distance of species in GBH*/   //GBH_pt
 
   int index_bg_rho_tot;       /**< Total density */
@@ -289,6 +291,7 @@ struct background
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
   int index_bi_app_horizon_gbh;  /**< {C} approximate horizon distance in Mpc for gbh */
+  int index_bi_app_horizon_ncdm;  /**< {C} approximate horizon distance in Mpc for ncdm */
   //int index_bi_horizon_gbh;   /**< {C} horizon distance in Mpc for gbh */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
   int index_bi_D_prime; /**< {C} D satisfies \f$ [D''(\tau)=-aHD'(\tau)+3/2 a^2 \rho_M D(\tau) \f$ */
