@@ -3400,7 +3400,7 @@ int perturbations_prepare_k_output(struct background * pba,
       class_store_columntitle(ppt->scalar_titles,"sigma_gbh",pba->has_gbh);
       class_store_columntitle(ppt->scalar_titles,"delta1_gbh",pba->has_gbh);
       //class_store_columntitle(ppt->scalar_titles,"theta1_gbh",pba->has_gbh);
-      //class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh);
+      class_store_columntitle(ppt->scalar_titles,"sigma1_gbh",pba->has_gbh);
       /*GBH_pt_end*/
 
       /* Decaying cold dark matter */
@@ -9076,7 +9076,7 @@ int perturbations_print_variables(double tau,
         */
         delta1_gbh=0.;
         // theta1_gbh=0.; 
-        // sigma1_gbh=0.;  
+        sigma1_gbh=0.;  
       } 
       else{
         delta_gbh = 3.*y[ppw->pv->index_pt_Delta_gbh];
@@ -9084,7 +9084,7 @@ int perturbations_print_variables(double tau,
         sigma_gbh = y[ppw->pv->index_pt_Sigma_gbh+1];
         delta1_gbh = y[ppw->pv->index_pt_Delta_gbh+1];
         // theta1_gbh = k*y[ppw->pv->index_pt_Sigma_gbh+ppw->pv->l_max_gbh];
-        // sigma1_gbh = y[ppw->pv->index_pt_Sigma_gbh+ppw->pv->l_max_gbh+1];
+        sigma1_gbh = y[ppw->pv->index_pt_Sigma_gbh+ppw->pv->l_max_gbh+1];
       }      
     }
     /*GBH_pt_end*/
@@ -9203,6 +9203,7 @@ int perturbations_print_variables(double tau,
           /**  TODO: also give theta1_gbh and sigma1_gbh to the output. 
            for that, you only need to find the following gauge transf from sync to newtonian gauge. then uncomment them in this function
           // theta1_gbh += ; */
+          // sigma of GBH is gauge invariant
         }
           
       }
@@ -9283,7 +9284,7 @@ int perturbations_print_variables(double tau,
     class_store_double(dataptr, sigma_gbh, pba->has_gbh, storeidx);
     class_store_double(dataptr, delta1_gbh, pba->has_gbh, storeidx);
     //class_store_double(dataptr, theta1_gbh, pba->has_gbh, storeidx);
-    //class_store_double(dataptr, sigma1_gbh, pba->has_gbh, storeidx);
+    class_store_double(dataptr, sigma1_gbh, pba->has_gbh, storeidx);
     /*GBH_pt_end*/
     /* Decaying cold dark matter */
     class_store_double(dataptr, delta_dcdm, pba->has_dcdm, storeidx);
