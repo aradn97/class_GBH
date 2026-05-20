@@ -574,7 +574,7 @@ int background_functions(
       {
         interpolated_integral = pba->rho_gbh_bg[pba->x_size_gbh_bg_rho-1] * current_x_value / pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1]; //this is in fact extrapolated
       }
-      interpolated_rho = interpolated_integral * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
+      interpolated_rho = interpolated_integral * pba->N_gbh * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
       pvecback[pba->index_bg_rho_gbh] = interpolated_rho;
 
       //if (pba->gbh_fluid_approximation == gbh_fa_caio) {
@@ -2081,7 +2081,7 @@ int background_gbh_init(
   }
 
 
-  pba->factor_gbh=4*_PI_*pow(0.71611*pba->T_cmb*_k_B_,4)*8*_PI_*_G_
+  pba->factor_gbh=4*_PI_*pow(pba->T0_gbh*pba->T_cmb*_k_B_,4)*8*_PI_*_G_
     /3./pow(_h_P_/2./_PI_,3)/pow(_c_,7)*_Mpc_over_m_*_Mpc_over_m_;
 
     
@@ -2867,7 +2867,7 @@ int background_initial_conditions(
                                             1, //we want interpolation for 1 column only
                                             pba->error_message),
                   pba->error_message, pba->error_message);
-              rho_gbh = interpolated_rho * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
+              rho_gbh = interpolated_rho * pba->N_gbh * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
               p_gbh = rho_gbh * w1;
               rho_ncdm_rel_tot += 3.*p_gbh; 
             }

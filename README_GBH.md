@@ -74,7 +74,7 @@ DONE 8. put default value for pba->n_max_gbh
 9. make sure all computations are within pba->has_gbh condition
 10. put a check for n_max_gbh comparing to the file
 11. implement pba->M_gbh and x=ma/T0 in background_functions
-12. T_gbh is once used in rho_ini and once in background_functions. check consistency
+DONE 12. T_gbh is once used in rho_ini and once in background_functions. check consistency
 DONE 13. Do we need shooting for rho0_gbh? maybe use the quadrature in ncdm once at the start...
 14. Initialization of last_index_gbh might be wrong
 DONE 15. Does parser_read_list_of_strings automatically allocate memory to pba->gbh_table_address?
@@ -117,7 +117,7 @@ DONE 45. Resolve the ***Pending*** issues in perturbations.c
 DONE (discussed with Caio: Omega_m~Omega0_m/a^3(H0/H)^2) 46. in dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); I'm using index_bg_Omega_M which includes relativistic neutrinos as well as non-relativistic. If we use index_bg_Omega_m we get zero in the denominator.
 Also Omega_m = pvecback[pba->index_bg_Omega_M]; in perturbations.
 47. GBH chemical potential is assumed to be zero, gbh degeneracy parameter assumed to be one (equivalent to deg_ncdm)
-48. use only one 0.71611. now you're using it both in input and background modules
+DONE 48. use only one 0.71611. now you're using it both in input and background modules
 DONE 49. use quadrature rho_gbh at initial condition
 DONE 50. remove rho_M as the matter density that includes neutrinos even if non-rel
 51. for(n=0;n<N;n++)

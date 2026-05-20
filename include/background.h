@@ -110,6 +110,7 @@ struct background
   int gbh_init_condition_integrate; 
   double M_gbh;             /**< mass of gbh species in eV */
   double N_gbh;             /**< number of gbh species */
+  double T0_gbh;            /**< present temperature of gbh / T_cmb */
   int gbh_fluid_approximation;            /*FA method in gbh perturbations. We need this so that if it is caio, we should compute w_{-1} in background */
   /*GBH_bg_end*/
 

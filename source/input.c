@@ -2371,7 +2371,7 @@ int input_read_parameters_species(struct file_content * pfc,
   double f_cdm=1., f_idm=0.;
   short has_m_budget = _FALSE_, has_cdm_userdefined = _FALSE_;
   double Omega_m_remaining = 0.;
-  double T0_gbh,interpolated_rho,rho_gbh; //GBH_bg
+  double interpolated_rho,rho_gbh; //GBH_bg
 
 
   sigma_B = 2.*pow(_PI_,5.)*pow(_k_B_,4.)/15./pow(_h_P_,3.)/pow(_c_,2);  // [W/(m^2 K^4) = Kg/(K^4 s^3)]
@@ -2736,7 +2736,7 @@ int input_read_parameters_species(struct file_content * pfc,
 
   /*GBH_bg_start*/ //Generalized Boltzmann Hierarchy for Massive Neutrinos
   
-  /** 7.0.0) total number of species solved with gbh */
+  /** 7.0) total number of species solved with gbh */
   class_call(parser_read_double(pfc,"N_gbh",&param1,&flag1,errmsg),
              errmsg,
              errmsg);
@@ -2751,14 +2751,21 @@ int input_read_parameters_species(struct file_content * pfc,
     if (ppt->gauge == newtonian){
       ppr->tol_gbh = ppr->tol_gbh_newtonian;
     }
+    /** 7.0.0) present temperature of gbh (divided by pba->T_cmb)*/
+    class_call(parser_read_double(pfc,"T_gbh",&param1,&flag1,errmsg),
+              errmsg,
+              errmsg);
+    /* Complete set of parameters */
+    if (flag1 == _TRUE_){
+      pba->T0_gbh = param1; 
+    }
     /** 7.0.1) total mass of species solved with gbh */
     class_call(parser_read_double(pfc,"M_gbh",&param1,&flag1,errmsg),
               errmsg,
               errmsg);
     /* Complete set of parameters */
     if (flag1 == _TRUE_){
-      T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
-      pba->M_gbh = param1 / _k_B_ * _eV_ / T0_gbh; //this is x0
+      pba->M_gbh = param1 / _k_B_ * _eV_ / pba->T0_gbh / pba->T_cmb; //this is x0
     }
     /** 7.0.2) Setting up pba->n_max_gbh*/
 
@@ -2822,7 +2829,7 @@ int input_read_parameters_species(struct file_content * pfc,
       {
         interpolated_rho = pba->rho_gbh_bg[pba->x_size_gbh_bg_rho-1] * pba->M_gbh / pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1]; //this is in fact extrapolated
       }
-      pba->Omega0_gbh = interpolated_rho * pba->N_gbh * 15. / pow(_PI_,2) * pow(0.71611,4.) * pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15 // using pow(0.71611,4.) instead of pow(4./11.,4./3.)
+      pba->Omega0_gbh = interpolated_rho * pba->N_gbh * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15 // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
     }
     else{ //use quadrature to compute Omega0_gbh
       class_call(background_gbh_momenta(
@@ -5793,7 +5800,6 @@ int input_default_params(struct background *pba,
   /** - Define local variables */
   struct injection* pin = &(pth->in);
   double sigma_B; /* Stefan-Boltzmann constant in \f$ W/m^2/K^4 = Kg/K^4/s^3 \f$*/
-  double T0_gbh; //GBH_bg
 
   sigma_B = 2. * pow(_PI_,5) * pow(_k_B_,4) / 15. / pow(_h_P_,3) / pow(_c_,2);
 
@@ -5978,8 +5984,8 @@ int input_default_params(struct background *pba,
 
   /*GBH_bg_start*/  //if you're considering changing this, also change its default value in precisons.h
   pba->N_gbh = 0;
-  T0_gbh = 0.71611 * pba->T_cmb; // using 0.71611 instead of pow(4./11.,1./3.)
-  pba->M_gbh = 0.06 / _k_B_ * _eV_ /T0_gbh;
+  pba->T0_gbh = 0.71611; // using 0.71611 instead of pow(4./11.,1./3.)
+  pba->M_gbh = 0.06 / _k_B_ * _eV_ / pba->T0_gbh / pba->T_cmb;
   pba->gbh_use_table = 1; // default: use table for gbh.
   pba->gbh_init_condition_integrate = 0; // default: use the exact initial conditions for perturbations in real space
   pba->n_max_gbh = 20;
