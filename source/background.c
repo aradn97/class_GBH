@@ -3192,7 +3192,6 @@ int background_output_titles(
   class_store_columntitle(titles,"(.)app_horizon_ncdm",pba->has_ncdm); 
   /*GBH_pt_start*/
   class_store_columntitle(titles,"(.)app_horizon_gbh",pba->has_gbh); 
-  class_store_columntitle(titles,"(.)horizon_gbh",pba->has_gbh); 
   /*GBH_pt_end*/
   class_store_columntitle(titles,"(.)rho_lambda",pba->has_lambda);
   class_store_columntitle(titles,"(.)rho_fld",pba->has_fld);
