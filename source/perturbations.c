@@ -2856,7 +2856,7 @@ int perturbations_workspace_init(
     /*GBH_pt_start*/
     if (pba->has_gbh == _TRUE_) {
       for (species_k=0; species_k<pba->N_gbh; species_k++){
-        ppw->approx[ppw->index_gbh_fa+species_k]=(int)gbh_fa_off;
+        ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]]=(int)gbh_fa_off;
       }
     }
     /*GBH_pt_end*/
@@ -4176,7 +4176,7 @@ int perturbations_vector_init(
       class_alloc(ppv->index_pt_Delta_gbh,pba->N_gbh*sizeof(int),ppt->error_message);
       class_alloc(ppv->index_pt_Sigma_gbh,pba->N_gbh*sizeof(int),ppt->error_message);
       for (species_k=0; species_k<pba->N_gbh; species_k++){
-        if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_off) {
+        if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_off) {
           ppv->index_pt_Delta_gbh[species_k] = index_pt;
           index_pt += ppv->n_max_gbh[species_k]; /* pressure moments in Boltzmann hierarchy */
           ppv->index_pt_Sigma_gbh[species_k] = index_pt;
@@ -4403,7 +4403,7 @@ int perturbations_vector_init(
     /*GBH_pt_start*/
     if (pba->has_gbh == _TRUE_) {//important for saving time
       for (species_k=0; species_k<pba->N_gbh; species_k++){
-        if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_off) {
+        if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_off) {
           /* we don't need multipoles above l=2 (but they are
              defined only when cfa are off) */
 
@@ -4764,7 +4764,7 @@ int perturbations_vector_init(
         /*GBH_pt_start*/
         if (pba->has_gbh == _TRUE_) {
           for (species_k=0; species_k<pba->N_gbh; species_k++){
-            if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {
+            if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
                 ppw->pv->y[ppw->pv->index_pt_delta_gbh[species_k]];
 
@@ -4862,7 +4862,7 @@ int perturbations_vector_init(
         /*GBH_pt_start*/
         if (pba->has_gbh == _TRUE_) {
           for (species_k=0; species_k<pba->N_gbh; species_k++){
-            if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {
+            if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
                 ppw->pv->y[ppw->pv->index_pt_delta_gbh[species_k]];
 
@@ -5001,7 +5001,7 @@ int perturbations_vector_init(
         /*GBH_pt_start*/
         if (pba->has_gbh == _TRUE_) {
           for (species_k=0; species_k<pba->N_gbh; species_k++){
-            if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {
+            if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
                 ppw->pv->y[ppw->pv->index_pt_delta_gbh[species_k]];
 
@@ -5124,7 +5124,7 @@ int perturbations_vector_init(
         /*GBH_pt_start*/
         if (pba->has_gbh == _TRUE_) {
           for (species_k=0; species_k<pba->N_gbh; species_k++){
-            if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {
+            if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
                 ppw->pv->y[ppw->pv->index_pt_delta_gbh[species_k]];
 
@@ -5265,7 +5265,7 @@ int perturbations_vector_init(
         /*GBH_pt_start*/
         if (pba->has_gbh == _TRUE_) {
           for (species_k=0; species_k<pba->N_gbh; species_k++){
-            if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {
+            if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
                 ppw->pv->y[ppw->pv->index_pt_delta_gbh[species_k]];
 
@@ -5444,7 +5444,7 @@ int perturbations_vector_init(
         /*GBH_pt_start*/
         if (pba->has_gbh == _TRUE_) {
           for (species_k=0; species_k<pba->N_gbh; species_k++){
-            if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {
+            if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
                 ppw->pv->y[ppw->pv->index_pt_delta_gbh[species_k]];
 
@@ -5482,7 +5482,7 @@ int perturbations_vector_init(
 
         gbh_any_species_switching_to_fa = _FALSE_;
         for (species_k=0; species_k<pba->N_gbh; species_k++){
-          if ((pa_old[ppw->index_gbh_fa+species_k] == (int)gbh_fa_off) && (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on)) {
+          if ((pa_old[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_off) && (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on)) {
             gbh_any_species_switching_to_fa = _TRUE_;
           }
         }
@@ -5494,7 +5494,7 @@ int perturbations_vector_init(
             fflush(stdout);
           }
           for (species_k=0; species_k<pba->N_gbh; species_k++){
-            if ((pa_old[ppw->index_gbh_fa+species_k] == (int)gbh_fa_off) && (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on)) {
+            if ((pa_old[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_off) && (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on)) {
               /* this species is transitioning right now: the main transition from GBH to FA is happening here */
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
                 3.*ppw->pv->y[ppw->pv->index_pt_Delta_gbh[species_k]];
@@ -5505,7 +5505,7 @@ int perturbations_vector_init(
               ppv->y[ppv->index_pt_sigma_gbh[species_k]] =
                 ppw->pv->y[ppw->pv->index_pt_Sigma_gbh[species_k]+1];
             }
-            else if (pa_old[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {
+            else if (pa_old[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {
               /* this species was already in the fluid approximation before this event; copy its
                  fluid variables across normally (same as the generic GBH copy blocks elsewhere) */
               ppv->y[ppv->index_pt_delta_gbh[species_k]] =
@@ -6436,7 +6436,7 @@ int perturbations_initial_conditions(struct precision * ppr,
     /*GBH_pt_start*/
       if (pba->has_gbh == _TRUE_) {
        for (species_k=0; species_k<pba->N_gbh; species_k++){
-        if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on){
+        if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on){
           ppw->pv->y[ppw->pv->index_pt_delta_gbh[species_k]] = delta_ur;
           ppw->pv->y[ppw->pv->index_pt_theta_gbh[species_k]] = theta_ur;
           ppw->pv->y[ppw->pv->index_pt_sigma_gbh[species_k]] = shear_ur;
@@ -6974,10 +6974,10 @@ int perturbations_approximations(
                                                       //so for a given k, there won't be any switching during integration
       for (species_k=0; species_k<pba->N_gbh; species_k++){
         if (k > ppr->gbh_FA_trigger/ppw->pvecback[pba->index_bg_app_horizon_gbh1+species_k]) {
-          ppw->approx[ppw->index_gbh_fa+species_k] = (int)gbh_fa_on;
+          ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] = (int)gbh_fa_on;
         }
         else {
-          ppw->approx[ppw->index_gbh_fa+species_k] = (int)gbh_fa_off;
+          ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] = (int)gbh_fa_off;
         }
       }
     }
@@ -7858,7 +7858,7 @@ int perturbations_total_stress_energy(
       p_gbh = ppw->pvecback[pba->index_bg_w_gbh1+species_k*(pba->n_max_gbh+1)+1]*rho_gbh;
       rho_plus_p_gbh = rho_gbh + p_gbh;
 
-      if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on){
+      if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on){
         delta_gbh = y[ppw->pv->index_pt_delta_gbh[species_k]];
         theta_gbh = y[ppw->pv->index_pt_theta_gbh[species_k]];
         w_gbh = p_gbh/rho_gbh;
@@ -8687,7 +8687,7 @@ int perturbations_sources(
     if (ppt->has_source_delta_gbh == _TRUE_) {
       for (index_tp = ppt->index_tp_delta_gbh; index_tp < ppt->index_tp_delta_gbh+pba->N_gbh; index_tp++) {
         species_k = index_tp - ppt->index_tp_delta_gbh;
-        if (ppw->approx[ppw->index_gbh_fa+species_k]==(int)gbh_fa_on) {
+        if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]]==(int)gbh_fa_on) {
           _set_source_(index_tp) = y[ppw->pv->index_pt_delta_gbh[species_k]]
             + 3.*a_prime_over_a*(1+pvecback[pba->index_bg_w_gbh1+species_k*(pba->n_max_gbh+1)+1])*theta_over_k2; // N-body gauge correction
         }
@@ -8818,7 +8818,7 @@ int perturbations_sources(
     if (ppt->has_source_theta_gbh == _TRUE_) {
       for (index_tp = ppt->index_tp_theta_gbh; index_tp < ppt->index_tp_theta_gbh+pba->N_gbh; index_tp++) {
         species_k = index_tp - ppt->index_tp_theta_gbh;
-        if (ppw->approx[ppw->index_gbh_fa+species_k]==(int)gbh_fa_on) {
+        if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]]==(int)gbh_fa_on) {
           _set_source_(index_tp) = y[ppw->pv->index_pt_theta_gbh[species_k]]
             + theta_shift; // N-body gauge correction
         }
@@ -10538,7 +10538,7 @@ int perturbations_derivs(double tau,
      for (species_k=0; species_k<pba->N_gbh; species_k++){
       int N = pv->n_max_gbh[species_k]+pv->l_max_gbh[species_k]+1,ll,n;
 
-      if (ppw->approx[ppw->index_gbh_fa+species_k] == (int)gbh_fa_on) {//fluid approximation eqs go here
+      if (ppw->approx[ppw->index_gbh_fa+pba->gbh_fa_group[species_k]] == (int)gbh_fa_on) {//fluid approximation eqs go here
       /** - -----> define intermediate quantitites */
       rho_gbh = pvecback[pba->index_bg_rho_gbh1+species_k]; /* background density */
       w_gbh = pvecback[pba->index_bg_w_gbh1+species_k*(pba->n_max_gbh+1)+1]; /* equation of state parameter */

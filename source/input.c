@@ -2766,6 +2766,25 @@ int input_read_parameters_species(struct file_content * pfc,
                  n, pba->m_gbh_in_eV[n]);
       pba->M_gbh[n] = pba->m_gbh_in_eV[n] / _k_B_ * _eV_ / pba->T0_gbh / pba->T_cmb; //this is x0 for species n
     }
+    /* Species with exactly equal mass have an exactly identical (mass-dependent) FA trigger, so they
+       share one ppw->index_gbh_fa slot in perturbations.c -- see the gbh_fa_group doc comment in
+       background.h for why. Grouping is by exact equality (not a tolerance): the switch-time collision
+       this avoids only actually happens for bit-identical M_gbh (guaranteed for equal m_gbh/deg_gbh
+       input, since parsing is deterministic); no fixed eV or relative tolerance can safely cover
+       near-but-not-exactly-equal masses across GBH's full mass range (checked empirically: the maximum
+       safe mass gap between two species varies by ~6 orders of magnitude in relative terms between
+       m=0.001 eV and m=1 eV, so any single hardcoded threshold would either merge meaningfully
+       different species at high mass or fail to prevent the crash at low mass). */
+    class_alloc(pba->gbh_fa_group,N_gbh*sizeof(int),errmsg);
+    for (n=0; n<N_gbh; n++){
+      pba->gbh_fa_group[n] = n;
+      for (int n2=0; n2<n; n2++){
+        if (pba->M_gbh[n2] == pba->M_gbh[n]){
+          pba->gbh_fa_group[n] = n2;
+          break;
+        }
+      }
+    }
     /** 7.0.2) Setting up pba->n_max_gbh*/
 
     /*compute pba->n_max_gbh, which is the maximum number of columns that will be read from
@@ -5993,6 +6012,7 @@ int input_default_params(struct background *pba,
   pba->M_gbh = NULL;
   pba->deg_gbh_default = 1.;
   pba->deg_gbh = NULL;
+  pba->gbh_fa_group = NULL;
   pba->gbh_use_table = 1; // default: use table for gbh.
   pba->gbh_init_condition_integrate = 0; // default: use the exact initial conditions for perturbations in real space
   pba->n_max_gbh = 20;

@@ -1108,6 +1108,7 @@ int background_free_input(
     free(pba->M_gbh);
     free(pba->deg_gbh);
     free(pba->factor_gbh);
+    free(pba->gbh_fa_group);
 
     if (pba->gbh_init_condition_integrate==_TRUE_){
       free(pba->dlnf0_dlnq_gbh); //GBH_pt

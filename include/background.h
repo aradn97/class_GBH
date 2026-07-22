@@ -116,6 +116,17 @@ struct background
                                             one per species, inferred from m_gbh_in_eV (mirrors M_ncdm) */
   double * deg_gbh, deg_gbh_default;   /**< vector of degeneracy parameters per gbh species, and its default
                                             value (mirrors deg_ncdm/deg_ncdm_default; default 1.) */
+  int * gbh_fa_group;                  /**< per-species fluid-approximation flag-sharing map, size N_gbh.
+                                            gbh_fa_group[n] = the lowest species index n'<=n with
+                                            M_gbh[n']==M_gbh[n] (exact equality). Species with the same mass
+                                            have an exactly mass-independent-identical FA trigger, so they are
+                                            made to share one ppw->index_gbh_fa slot (rather than each getting
+                                            its own): this avoids two independent per-species bisections
+                                            converging on the same switching time, which
+                                            perturbations_find_approximation_switches cannot handle (it assumes
+                                            exactly one approximation flag changes per switching event). Species
+                                            with distinct masses always keep gbh_fa_group[n]==n (their own slot),
+                                            so the FA trigger stays fully mass-dependent. */
   double T0_gbh;            /**< present temperature of gbh / T_cmb (single value shared across all gbh species) */
   int gbh_fluid_approximation;            /*FA method in gbh perturbations. We need this so that if it is caio, we should compute w_{-1} in background */
   /*GBH_bg_end*/
