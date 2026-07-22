@@ -106,11 +106,17 @@ struct background
   int last_index_gbh_rho;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
   int last_index_gbh_w;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
   int gbh_use_table;        /**< Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to perform integrals (0). Default is 0*/
-  int n_max_gbh;            /**< number of w_n's needed for perturbation equations in GBH  */ 
-  int gbh_init_condition_integrate; 
-  double M_gbh;             /**< mass of gbh species in eV */
-  double N_gbh;             /**< number of gbh species */
-  double T0_gbh;            /**< present temperature of gbh / T_cmb */
+  int n_max_gbh;            /**< number of w_n's needed for perturbation equations in GBH  */
+  int gbh_init_condition_integrate;
+  int N_gbh;                          /**< Number of distinguishable gbh species. Default 0 (off), mirrors
+                                            N_ncdm exactly: the GBH input-parsing block in input.c only
+                                            runs if N_gbh > 0. */
+  double * m_gbh_in_eV;                /**< list of gbh species masses in eV, one per species (mirrors m_ncdm_in_eV) */
+  double * M_gbh;                      /**< vector of masses of gbh species: dimensionless ratios m_gbh/T_gbh,
+                                            one per species, inferred from m_gbh_in_eV (mirrors M_ncdm) */
+  double * deg_gbh, deg_gbh_default;   /**< vector of degeneracy parameters per gbh species, and its default
+                                            value (mirrors deg_ncdm/deg_ncdm_default; default 1.) */
+  double T0_gbh;            /**< present temperature of gbh / T_cmb (single value shared across all gbh species) */
   int gbh_fluid_approximation;            /*FA method in gbh perturbations. We need this so that if it is caio, we should compute w_{-1} in background */
   /*GBH_bg_end*/
 
@@ -148,7 +154,7 @@ struct background
 
   double age; /**< age in Gyears */
   double conformal_age; /**< conformal age in Mpc */
-  double gbh_horizon; /**< conformal free streaming length of GBH species in Mpc */
+  double * gbh_horizon; /**< conformal free streaming length of each GBH species, in Mpc. Size N_gbh. */
   double ncdm_horizon; /**< conformal free streaming length of GBH species in Mpc */
   double K; /**< \f$ K \f$: Curvature parameter \f$ K=-\Omega0_k*a_{today}^2*H_0^2\f$; */
   int sgnK; /**< K/|K|: -1, 0 or 1 */
@@ -207,11 +213,15 @@ struct background
 
   
 
-  int index_bg_w_min1_gbh;    /**< P_{-1} of species in GBH, from quadrature integration*/   //GBH_bg
-  int index_bg_rho_gbh;       /**< density of species in GBH*/   //GBH_bg
-  int index_bg_w_gbh;         /**< equation of state of species in GBH*/   //GBH_bg
-  int index_bg_app_horizon_gbh;     /**< approximate comoving horizon distance of species in GBH*/   //GBH_pt
-  int index_bg_app_horizon_ncdm;     /**< approximate comoving horizon distance of species in ncdm*/  
+  int index_bg_w_min1_gbh1;    /**< base of an N_gbh-sized block; P_{-1} of species k, from quadrature
+                                    integration, at index_bg_w_min1_gbh1+k */   //GBH_bg
+  int index_bg_rho_gbh1;       /**< base of an N_gbh-sized block; density of species k at index_bg_rho_gbh1+k */   //GBH_bg
+  int index_bg_w_gbh1;         /**< base of an N_gbh*(n_max_gbh+1)-sized 2-D block (species-major):
+                                    equation-of-state moment n of species k at
+                                    index_bg_w_gbh1 + k*(n_max_gbh+1) + n */   //GBH_bg
+  int index_bg_app_horizon_gbh1;     /**< base of an N_gbh-sized block of approximate comoving horizon
+                                          distances, one per GBH species; species k at index_bg_app_horizon_gbh1+k */   //GBH_pt
+  int index_bg_app_horizon_ncdm;     /**< approximate comoving horizon distance of species in ncdm*/
   //int index_bg_horizon_gbh;   /**< comoving horizon distance of species in GBH*/   //GBH_pt
 
   int index_bg_rho_tot;       /**< Total density */
@@ -291,7 +301,8 @@ struct background
   int index_bi_time;    /**< {C} proper (cosmological) time in Mpc */
   int index_bi_rs;      /**< {C} sound horizon */
   int index_bi_tau;     /**< {C} conformal time in Mpc */
-  int index_bi_app_horizon_gbh;  /**< {C} approximate horizon distance in Mpc for gbh */
+  int index_bi_app_horizon_gbh1;  /**< {C} base of an N_gbh-sized block of approximate horizon distances
+                                        in Mpc, one per GBH species; species k at index_bi_app_horizon_gbh1+k */
   int index_bi_app_horizon_ncdm;  /**< {C} approximate horizon distance in Mpc for ncdm */
   //int index_bi_horizon_gbh;   /**< {C} horizon distance in Mpc for gbh */
   int index_bi_D;       /**< {C} scale independent growth factor D(a) for CDM perturbations. */
@@ -381,7 +392,8 @@ struct background
   double * weights_gbh;        /**< Pointers to vectors of corresponding quadrature weights w */
   int q_size_gbh_bg;           /**< Size of the q_gbh_bg array */
   int q_size_gbh;              /**< Size of the q_gbh array */
-  double factor_gbh;           /**< normalization factor for calculating energy density etc.*/
+  double * factor_gbh;          /**< normalization factor for calculating energy density etc., one per
+                                     gbh species (incorporates that species' deg_gbh). Size N_gbh. */
 
   //@}
   /*GBH_bg_end*/

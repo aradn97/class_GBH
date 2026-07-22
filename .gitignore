@@ -56,3 +56,5 @@ default_ncdm_py.ini
 seminar_plots.ipynb
 test_gbh.ipynb
 test_gbh.ipynb
+GBH_papers/render/
+.ipynb_checkpoints/

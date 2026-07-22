@@ -303,7 +303,7 @@ struct perturbations
   int index_tp_delta_ur; /**< index value for delta of ultra-relativistic neutrinos/relics */
   int index_tp_delta_idr; /**< index value for delta of interacting dark radiation */
   int index_tp_delta_ncdm1; /**< index value for delta of first non-cold dark matter species (e.g. massive neutrinos) */
-  int index_tp_delta_gbh; /**< index value for delta of gbh species (e.g. massive neutrinos) */ //GBH_pt
+  int index_tp_delta_gbh; /**< base of an N_gbh-sized block: index value for delta of gbh species k at index_tp_delta_gbh+k */ //GBH_pt
   int index_tp_perturbed_recombination_delta_temp;		/**< Gas temperature perturbation */
   int index_tp_perturbed_recombination_delta_chi;		/**< Inionization fraction perturbation */
 
@@ -321,7 +321,7 @@ struct perturbations
   int index_tp_theta_idm;   /**< index value for theta of interacting dark matter */
   int index_tp_theta_dr;    /**< index value for F1 of decay radiation */
   int index_tp_theta_ncdm1; /**< index value for theta of first non-cold dark matter species (e.g. massive neutrinos) */
-  int index_tp_theta_gbh;   /**< index value for theta of gbh species (e.g. massive neutrinos) */ //GBH_pt
+  int index_tp_theta_gbh;   /**< base of an N_gbh-sized block: index value for theta of gbh species k at index_tp_theta_gbh+k */ //GBH_pt
 
   int index_tp_phi;          /**< index value for metric fluctuation phi */
   int index_tp_phi_prime;    /**< index value for metric fluctuation phi' */
@@ -492,13 +492,14 @@ struct perturbations_vector
   int index_pt_theta_ur; /**< velocity of ultra-relativistic neutrinos/relics */
   int index_pt_shear_ur; /**< shear of ultra-relativistic neutrinos/relics */
   /*GBH_pt_start*/
-  int n_max_gbh;
-  int l_max_gbh;
-  int index_pt_delta_gbh; /**< delta of gbh neutrinos/relics in fa */ 
-  int index_pt_theta_gbh; /**< velocity of gbh neutrinos/relics in fa */ 
-  int index_pt_sigma_gbh; /**< shear of gbh neutrinos/relics in fa*/ 
-  int index_pt_Delta_gbh; /**< delta of gbh neutrinos/relics */ 
-  int index_pt_Sigma_gbh; /**< shear of gbh neutrinos/relics*/ 
+  int N_gbh;          /**< number of distinct gbh species (copied from pba->N_gbh for convenience, mirrors ppv->N_ncdm) */
+  int * n_max_gbh;     /**< truncation order in velocity-moment index n, one per gbh species. Size N_gbh. */
+  int * l_max_gbh;     /**< truncation order in multipole l, one per gbh species. Size N_gbh. */
+  int * index_pt_delta_gbh; /**< delta of gbh neutrinos/relics in fa, one base index per species. Size N_gbh. */
+  int * index_pt_theta_gbh; /**< velocity of gbh neutrinos/relics in fa, one base index per species. Size N_gbh. */
+  int * index_pt_sigma_gbh; /**< shear of gbh neutrinos/relics in fa, one base index per species. Size N_gbh. */
+  int * index_pt_Delta_gbh; /**< delta of gbh neutrinos/relics (exact hierarchy), one base index per species. Size N_gbh. */
+  int * index_pt_Sigma_gbh; /**< angular moments of gbh neutrinos/relics (exact hierarchy), one base index per species. Size N_gbh. */
   /*GBH_pt_end*/
   int index_pt_l3_ur;    /**< l=3 of ultra-relativistic neutrinos/relics */
   int l_max_ur;          /**< max momentum in Boltzmann hierarchy (at least 3) */
@@ -612,6 +613,10 @@ struct perturbations_workspace
   double * theta_ncdm;	/**< velocity divergence theta of each ncdm species */
   double * shear_ncdm;	/**< shear for each ncdm species */
 
+  double * delta_gbh; /**< relative density perturbation of each gbh species */ //GBH_pt
+  double * theta_gbh; /**< velocity divergence theta of each gbh species */ //GBH_pt
+  double * sigma_gbh; /**< shear of each gbh species */ //GBH_pt
+
   double delta_m;	/**< relative density perturbation of all non-relativistic species */
   double theta_m;	/**< velocity divergence theta of all non-relativistic species */
 
@@ -650,7 +655,9 @@ struct perturbations_workspace
   int index_ap_rsa_idr; /**< index for dark radiation streaming approximation */
   int index_ap_ufa; /**< index for ur fluid approximation */
   int index_ap_ncdmfa; /**< index for ncdm fluid approximation */
-  int index_gbh_fa; /**< index for gbh fluid approximation */ //GBH_pt
+  int index_gbh_fa; /**< base of an N_gbh-sized block of gbh fluid-approximation flags, one per species
+                         (species mass/horizon differ, so each can switch to the fluid approximation
+                         independently); species k's flag at index_gbh_fa+k */ //GBH_pt
   int ap_size;      /**< number of relevant approximations for a given mode */
 
   int * approx;     /**< array of approximation flags holding at a given time: approx[index_ap] */

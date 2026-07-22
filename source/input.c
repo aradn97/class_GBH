@@ -2361,7 +2361,7 @@ int input_read_parameters_species(struct file_content * pfc,
   double param1, param2, param3;
   char string1[_ARGUMENT_LENGTH_MAX_];
   int fileentries;
-  int N_ncdm=0, n, entries_read;
+  int N_ncdm=0, N_gbh=0, n, entries_read;
   double rho_ncdm;
   double scf_lambda;
   double fnu_factor;
@@ -2735,16 +2735,11 @@ int input_read_parameters_species(struct file_content * pfc,
   /* 7) ** ADDITIONAL SPECIES ** --> Add your species here */
 
   /*GBH_bg_start*/ //Generalized Boltzmann Hierarchy for Massive Neutrinos
-  
+
   /** 7.0) total number of species solved with gbh */
-  class_call(parser_read_double(pfc,"N_gbh",&param1,&flag1,errmsg),
-             errmsg,
-             errmsg);
-  /* Complete set of parameters */
-  if (flag1 == _TRUE_){
-    pba->N_gbh = param1; 
-  }
-  if (pba->N_gbh>0){
+  class_read_int("N_gbh",N_gbh);
+  if (N_gbh > 0){
+    pba->N_gbh = N_gbh;
     if (ppt->gauge == synchronous){
       ppr->tol_gbh = ppr->tol_gbh_synchronous;
     }
@@ -2757,15 +2752,19 @@ int input_read_parameters_species(struct file_content * pfc,
               errmsg);
     /* Complete set of parameters */
     if (flag1 == _TRUE_){
-      pba->T0_gbh = param1; 
+      pba->T0_gbh = param1;
     }
-    /** 7.0.1) total mass of species solved with gbh */
-    class_call(parser_read_double(pfc,"M_gbh",&param1,&flag1,errmsg),
-              errmsg,
-              errmsg);
-    /* Complete set of parameters */
-    if (flag1 == _TRUE_){
-      pba->M_gbh = param1 / _k_B_ * _eV_ / pba->T0_gbh / pba->T_cmb; //this is x0
+    /** 7.0.1) mass of each species solved with gbh, in eV (one per species, comma-separated if N_gbh>1) */
+    class_read_list_of_doubles_or_default("m_gbh",pba->m_gbh_in_eV,0.0,N_gbh);
+    /** 7.0.1b) degeneracy of each species solved with gbh (one per species, comma-separated if N_gbh>1) */
+    class_read_list_of_doubles_or_default("deg_gbh",pba->deg_gbh,pba->deg_gbh_default,N_gbh);
+    /* compute the dimensionless mass ratio M_gbh[n] = m_gbh_in_eV[n]/T_gbh for each species, from the eV input */
+    class_alloc(pba->M_gbh,N_gbh*sizeof(double),errmsg);
+    for (n=0; n<N_gbh; n++){
+      class_test(pba->m_gbh_in_eV[n] <= 0., errmsg,
+                 "m_gbh species %d must be strictly positive (got %e eV); GBH requires a nonzero mass for every species.",
+                 n, pba->m_gbh_in_eV[n]);
+      pba->M_gbh[n] = pba->m_gbh_in_eV[n] / _k_B_ * _eV_ / pba->T0_gbh / pba->T_cmb; //this is x0 for species n
     }
     /** 7.0.2) Setting up pba->n_max_gbh*/
 
@@ -2808,46 +2807,51 @@ int input_read_parameters_species(struct file_content * pfc,
                 pba->error_message,
                 errmsg); //
 
-    if (pba->gbh_use_table == 1){
-      // Interpolate `rho` for GBH from the saved array of pre-computed values, for x=ma0/T0
-      if(pba->M_gbh<=pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1])
-      {
-        class_call(array_interpolate_spline(
-                                            pba->x_gbh_bg_rho,
-                                            pba->x_size_gbh_bg_rho,
-                                            pba->rho_gbh_bg,
-                                            pba->d2rho_gbh_bg,
-                                            1, //number of columns in rho_gbh_bg
-                                            pba->M_gbh,  // this is x0 at present time: the value at which we want interpolation
-                                            &pba->last_index_gbh_rho,
-                                            &interpolated_rho,
-                                            1, //we want interpolation for 1 column only
-                                            pba->error_message),
-                  pba->error_message, pba->error_message);
+    /* Omega0_gbh is the TOTAL gbh energy budget today, summed over all N_gbh species
+       (mirrors Omega0_ncdm_tot vs. per-species Omega0_ncdm[n]). */
+    pba->Omega0_gbh = 0.;
+    for (n=0; n<N_gbh; n++){
+      if (pba->gbh_use_table == 1){
+        // Interpolate `rho` for GBH from the saved array of pre-computed values, for x=ma0/T0
+        if(pba->M_gbh[n]<=pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1])
+        {
+          class_call(array_interpolate_spline(
+                                              pba->x_gbh_bg_rho,
+                                              pba->x_size_gbh_bg_rho,
+                                              pba->rho_gbh_bg,
+                                              pba->d2rho_gbh_bg,
+                                              1, //number of columns in rho_gbh_bg
+                                              pba->M_gbh[n],  // this is x0 for species n at present time: the value at which we want interpolation
+                                              &pba->last_index_gbh_rho,
+                                              &interpolated_rho,
+                                              1, //we want interpolation for 1 column only
+                                              pba->error_message),
+                    pba->error_message, pba->error_message);
+        }
+        else
+        {
+          interpolated_rho = pba->rho_gbh_bg[pba->x_size_gbh_bg_rho-1] * pba->M_gbh[n] / pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1]; //this is in fact extrapolated
+        }
+        pba->Omega0_gbh += interpolated_rho * pba->deg_gbh[n] * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15 // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
       }
-      else
-      {
-        interpolated_rho = pba->rho_gbh_bg[pba->x_size_gbh_bg_rho-1] * pba->M_gbh / pba->x_gbh_bg_rho[pba->x_size_gbh_bg_rho-1]; //this is in fact extrapolated
+      else{ //use quadrature to compute this species' contribution to Omega0_gbh
+        class_call(background_gbh_momenta(
+                                          pba->q_gbh_bg,
+                                          pba->weights_gbh_bg,
+                                          pba->q_size_gbh_bg,
+                                          pba->M_gbh[n],
+                                          pba->factor_gbh[n],
+                                          0.,       //redsift 0
+                                          NULL,
+                                          &rho_gbh,
+                                          NULL,
+                                          NULL,
+                                          NULL,
+                                          pba->n_max_gbh), //this last entry does not matter we are passing null for the previous entry
+                      pba->error_message,
+                      pba->error_message);
+        pba->Omega0_gbh += rho_gbh / pow(pba->H0,2);
       }
-      pba->Omega0_gbh = interpolated_rho * pba->N_gbh * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g; //compare to Omega0_ur; for M_gbh=0, the table rho is 7/8*pi^2/15 // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
-    }
-    else{ //use quadrature to compute Omega0_gbh
-      class_call(background_gbh_momenta(
-                                        pba->q_gbh_bg,
-                                        pba->weights_gbh_bg,
-                                        pba->q_size_gbh_bg,
-                                        pba->M_gbh,
-                                        pba->factor_gbh,
-                                        0.,       //redsift 0
-                                        NULL,
-                                        &rho_gbh, 
-                                        NULL, 
-                                        NULL,  
-                                        NULL,     
-                                        pba->n_max_gbh), //this last entry does not matter we are passing null for the previous entry
-                    pba->error_message,
-                    pba->error_message);
-      pba->Omega0_gbh = rho_gbh / pow(pba->H0,2);
     }
     /*GBH_bg_end*/
 
@@ -5985,7 +5989,10 @@ int input_default_params(struct background *pba,
   /*GBH_bg_start*/  //if you're considering changing this, also change its default value in precisons.h
   pba->N_gbh = 0;
   pba->T0_gbh = 0.71611; // using 0.71611 instead of pow(4./11.,1./3.)
-  pba->M_gbh = 0.06 / _k_B_ * _eV_ / pba->T0_gbh / pba->T_cmb;
+  pba->m_gbh_in_eV = NULL;
+  pba->M_gbh = NULL;
+  pba->deg_gbh_default = 1.;
+  pba->deg_gbh = NULL;
   pba->gbh_use_table = 1; // default: use table for gbh.
   pba->gbh_init_condition_integrate = 0; // default: use the exact initial conditions for perturbations in real space
   pba->n_max_gbh = 20;

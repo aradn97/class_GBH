@@ -1,6 +1,15 @@
 ***************************************************************************************
 Input parameters for GBH and their default values:
 
+N_gbh                          # Number of distinct gbh species. Default 0 (gbh off), mirrors N_ncdm exactly:
+                                the whole GBH sector is disabled unless N_gbh>0 is set explicitly.
+m_gbh                          # Mass of each gbh species, in eV. One value if N_gbh=1, or N_gbh comma-separated
+                                values if N_gbh>1 (mirrors m_ncdm). Required whenever N_gbh>0.
+deg_gbh                        # Degeneracy of each gbh species. One value, or N_gbh comma-separated values if
+                                N_gbh>1 (mirrors deg_ncdm). Default 1 per species.
+T_gbh                          # present temperature of gbh / T_cmb. Default 0.71611. Shared across all gbh
+                                species (not yet per-species).
+
 gbh_use_table                 # Whether to use gbh w_n precomputed table for neutrinos background (1) or use quadrature to
                                 perform integrals (0). Default is 1
                                 ***Case 0 is not implemented yet.
@@ -9,6 +18,15 @@ n_max_gbh                     # Number of velocity moments for the background. D
 n_max_gbh_table               # Number of columns in the input w table                                
 
 gbh_w_table                   # directory of the file containing pre-computed table of w_n's
+
+***************************************************************************************
+Note on multi-species status (as of the N_gbh/deg_gbh/m_gbh restructuring):
+N_gbh/deg_gbh/m_gbh are now real per-species input fields (pba->N_gbh, pba->deg_gbh[],
+pba->m_gbh_in_eV[]/pba->M_gbh[]), same idiom as ncdm. However, only species index [0] is
+actually consumed by background.c/perturbations.c so far -- setting N_gbh>1 will build and
+run but will NOT evolve additional species yet. See multi_species_gbh_implementation_plan.md
+for the remaining work (per-species background-vector indices, perturbation state-vector
+indices, Boltzmann hierarchy loop, etc.) before N_gbh>1 is physically meaningful.
 
 
 
@@ -81,7 +99,7 @@ DONE 15. Does parser_read_list_of_strings automatically allocate memory to pba->
 DONE (not necessary) 16. Consider adding a second pba->gbh_use_table just for rho.
 DONE 17. for x>100 find rho
 DONE 18. be careful with units of rho
-19. In input.c, put some error condition if m_gbh is not given
+DONE (input_read_parameters_species now has a class_test rejecting m_gbh_in_eV[n]<=0 for every species; an omitted `m_gbh` falls back to the 0.0 default and is caught by the same test) 19. In input.c, put some error condition if m_gbh is not given
 20. why do we have ppr->gbh_use_table?
 21. is x<1.e-3 handled correctly for rho?
 22. is x<1.e-3 handled correctly for w_n's?
@@ -91,7 +109,7 @@ DONE 25. I'm adding has_gbh_pt to be able to turn-off perturbations from input f
 26. define ppv->index_pt_delta_gbh,ppv->index_pt_Delta_gbh,ppv->n_max_gbh,ppw->index_gbh_fa in perturbations.h file and ppr->n_max_gbh in precisions.h. make sure ppv->n_max_gbh>1 so that we have the pressure density
 DONE (obsolete note) 27. For the moment, for each k, I either use GBH at every tau or not at all. The case of switching to FA during evolution should be discussed later.
 DONE 28. double check with Caio that the x column is the same for the two tables.
-29. dimension of Sigma_gbh is (ppv->n_max_gbh)*(ppv->l_max_gbh). dont we want (n+1)l?
+DONE (equation-by-equation check against the two GBH papers confirms the n_max*l_max sizing, i.e. n=0...n_max-1, is correct as-is; no (n+1) needed) 29. dimension of Sigma_gbh is (ppv->n_max_gbh)*(ppv->l_max_gbh). dont we want (n+1)l?
 DONE (because it directly enters in the equation for sigma') 30. Why isn't this zero in the initial conditions? l3_ur = ktau_three*2./7./(12.*fracnu+45.)* ppr->curvature_ini;
 31. Maybe implement the FA at very low k, x<1?
 32. I'm using p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1]; in perturbations. what if n_max is chosen to be 1?
@@ -149,7 +167,7 @@ DONE 65. save w_n's instead of P_n's?
 67. remove n_max_gbh as an input parameter if use_table is 1. It should be computed based on what we need for perturbations.
 Warn in the paper or to the user how large the table needs to be
 68. remove ppr->gbh_nl_max_method==1
-69. The error n_max_gbh_table<n_max_gbh is not being triggered when n_max_gbh_table is not given in the input and the default 31 is being used. either remove n_max_gbh totally or put error if the default of n_max_gbh_table is smaller than n_max_gbh
+DONE (background_gbh_init now derives pba->n_max_gbh_table from the actual table file's column count, rather than trusting the input.c placeholder default of 31, and warns + falls back to gbh_use_table=0/quadrature if it's too small for the requested n_max_gbh; verified this triggers correctly with an oversized gbh_FA_trigger. The stale default of 31 is now only ever reached, harmlessly, when gbh_use_table=0 and the table is never read) 69. The error n_max_gbh_table<n_max_gbh is not being triggered when n_max_gbh_table is not given in the input and the default 31 is being used. either remove n_max_gbh totally or put error if the default of n_max_gbh_table is smaller than n_max_gbh
 DONE 70. set the default in input.c to pba->gbh_use_table = 1, and put the table somewhere so that user does not have to provide it.
 DONE 71. move w_n table to external
 DONE 72. do not hard code 1000 as the max x value of files
