@@ -178,3 +178,20 @@ DONE 75. remove extra precision params use_formula and gbh_FA_caio_transition_ra
 this is now done for ncdm. do it for gbh
 77. compute w_-1 at background only if gbh_fa is caio.
 DONE 78. dont call class_call(background_ncdm_momenta(pba->q_gbh_bg, ...)) in the initial condition checker of background for gbh.
+79. OPEN (not fixed this round -- documenting only): evolver=1 (ndf15) produces silently unphysical
+    GBH results (sigma8 off by many orders of magnitude, d_gbh(k) blown up to ~1e16 for some k) for
+    m_gbh above roughly 1.5-2 eV, well before the mass (~10 eV) where it actually raises an error.
+    The corruption is confined to k-modes still in the exact hierarchy (haven't crossed the
+    gbh_FA_trigger switch) -- confirmed independent of gbh_nl_max_method (both 0 and 1 show the
+    problem, just as silent corruption vs. an outright crash respectively), and gets worse under a
+    *tighter* tol_perturbations_integration, consistent with a genuine ndf15/GBH-hierarchy
+    ill-conditioning rather than a borderline-precision artifact. evolver=0 (rk) does not show this
+    (see item 80 below for a related but separate rk gap that was fixed). Root-causing exactly why
+    ndf15's implicit Newton-based stepping fails on the GBH exact-hierarchy RHS in this regime would
+    need real numerical investigation (Jacobian conditioning etc.), not attempted here. Until fixed,
+    do not trust gbh_fluid_approximation results with evolver=1 above ~1.5-2 eV; use evolver=0.
+DONE 80. perturbations_timescale (used only by evolver=0/rk to pick its step size) checked
+    pba->has_ncdm but not pba->has_gbh when deciding whether to resolve tau_k=1/k in the step-size
+    estimate -- meaning a GBH-only run's rk steps could ignore k entirely once radiation streaming
+    turned on, even while a GBH species was still in its exact (non-fluid) hierarchy needing
+    k-resolved steps. Fixed by adding the missing pba->has_gbh check.
