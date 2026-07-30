@@ -2766,6 +2766,31 @@ int input_read_parameters_species(struct file_content * pfc,
                  n, pba->m_gbh_in_eV[n]);
       pba->M_gbh[n] = pba->m_gbh_in_eV[n] / _k_B_ * _eV_ / pba->T0_gbh / pba->T_cmb; //this is x0 for species n
     }
+    /*GBH_pt_start*/
+    /* evolver=ndf15 is known to crash or silently corrupt the GBH exact hierarchy above roughly
+       1.5-2 eV; evolver=rk does not show this. Until that is fixed numerically, force rk above a
+       1 eV mass threshold rather than let a user unknowingly get a corrupted power spectrum. */
+    if (ppr->evolver == ndf15) {
+      for (n=0; n<N_gbh; n++){
+        if (pba->m_gbh_in_eV[n] > 1.){
+          printf("Warning: GBH species %d has mass %.2f eV (> 1 eV). evolver=ndf15 is known to produce\n"
+                 "incorrect results for the GBH exact hierarchy above roughly 1.5-2 eV -- it either crashes\n"
+                 "outright or silently corrupts the power spectrum by many orders of magnitude.\n"
+                 "Automatically switching to evolver=rk for this run instead. This is a temporary\n"
+                 "workaround; a proper numerical fix for ndf15 at these masses has not yet been implemented.\n"
+                 "Note: if you have disabled the tight-coupling approximation (e.g. by setting\n"
+                 "tight_coupling_trigger_tau_c_over_tau_h / tight_coupling_trigger_tau_c_over_tau_k very low\n"
+                 "or to 0), the rk evolver just selected will struggle badly or fail outright -- rk cannot\n"
+                 "handle the fully tightly-coupled photon-baryon system without that approximation active.\n"
+                 "If you need tca disabled, you'll have to accept the GBH/ndf15 caveat above instead and\n"
+                 "set evolver=ndf15 by hand.\n",
+                 n, pba->m_gbh_in_eV[n]);
+          ppr->evolver = rk;
+          break;
+        }
+      }
+    }
+    /*GBH_pt_end*/
     /* Species with exactly equal mass have an exactly identical (mass-dependent) FA trigger, so they
        share one ppw->index_gbh_fa slot in perturbations.c -- see the gbh_fa_group doc comment in
        background.h for why. Grouping is by exact equality (not a tolerance): the switch-time collision

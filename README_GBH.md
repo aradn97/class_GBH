@@ -181,15 +181,101 @@ DONE 78. dont call class_call(background_ncdm_momenta(pba->q_gbh_bg, ...)) in th
 79. OPEN (not fixed this round -- documenting only): evolver=1 (ndf15) produces silently unphysical
     GBH results (sigma8 off by many orders of magnitude, d_gbh(k) blown up to ~1e16 for some k) for
     m_gbh above roughly 1.5-2 eV, well before the mass (~10 eV) where it actually raises an error.
-    The corruption is confined to k-modes still in the exact hierarchy (haven't crossed the
-    gbh_FA_trigger switch) -- confirmed independent of gbh_nl_max_method (both 0 and 1 show the
-    problem, just as silent corruption vs. an outright crash respectively), and gets worse under a
-    *tighter* tol_perturbations_integration, consistent with a genuine ndf15/GBH-hierarchy
-    ill-conditioning rather than a borderline-precision artifact. evolver=0 (rk) does not show this
-    (see item 80 below for a related but separate rk gap that was fixed). Root-causing exactly why
-    ndf15's implicit Newton-based stepping fails on the GBH exact-hierarchy RHS in this regime would
-    need real numerical investigation (Jacobian conditioning etc.), not attempted here. Until fixed,
+    evolver=0 (rk) does not show this (see item 80 below for a related but separate rk gap that was
+    fixed). gets worse under a *tighter* tol_perturbations_integration, consistent with a genuine
+    ndf15/GBH-hierarchy ill-conditioning rather than a borderline-precision artifact. Until fixed,
     do not trust gbh_fluid_approximation results with evolver=1 above ~1.5-2 eV; use evolver=0.
+
+    Direct investigation this round (m_gbh=5 eV, single species, k_output_values isolating one k):
+    the actual `evolver_ndf15` crash ("Step size too small") reproduces on the *smallest* k in the
+    internal source-sampling grid (~8e-6 Mpc^-1 for this setup) -- a mode that stays in the exact
+    (non-fluid) hierarchy for the entire run (n_max=4, l_max=3, never crosses gbh_FA_trigger), not
+    a large-k/small-scale mode as previously assumed. A temporary debug instrumentation was added to
+    `perturbations_derivs` (guarded behind `GBH_DEBUG_FILE`/`GBH_DEBUG_FA_FILE`/`GBH_DEBUG_K` env
+    vars, currently uncommitted in source/perturbations.c) to dump every Delta_gbh[n]/Sigma_gbh[n,l]
+    value at every RHS evaluation for both evolvers at this k. Result: the dumped state vector is
+    completely smooth and finite all the way to today for *both* evolvers -- no NaN, no blow-up, no
+    discontinuity -- even though ndf15 fails on this exact k/tau range. This directly rules out,
+    by computation rather than assertion:
+      - the n_max-boundary closure ratios (`delta_next`, `sigma_ns`/`sigma_sn`) -- computed directly
+        from real background output, both stay O(1e-6)-to-O(1), smooth, no blow-up, even deep in the
+        w_n(x) table-extrapolation regime.
+      - the fluid-approximation's background-derived coefficients (`ca2_gbh`, `c2_asp`, `k_fs`,
+        `w_min1_gbh`/lambda_gbh) -- also directly computed from background.dat, all smooth, no sign
+        flip, no division-by-zero.
+      - the l=1 Newtonian-gauge metric-coupling term (`delta_l1`, proportional to k, so it *vanishes*
+        as k->0 rather than diverging).
+    Also ruled out a generic ndf15-at-high-mass issue unrelated to GBH: the identical cosmology /
+    mass / evolver=1 / k-grid run with plain `ncdm` (no GBH at all) integrates fine
+    (sigma8=0.557, sane) -- so the failure is specific to the GBH exact hierarchy's implementation,
+    not massive species + ndf15 in general.
+    Follow-up (this round): added a second temporary debug hook, this time inside
+    `evolver_ndf15` itself (also guarded by env var, `GBH_JAC_DUMP_FILE`, currently uncommitted in
+    tools/evolver_ndf15.c), that dumps the dense finite-difference Jacobian (`jac.dfdy`, always
+    populated regardless of the sparse/dense internal representation) at the exact moment the
+    `absh <= hmin` failure fires. For the same failing case (m=5eV, k~8e-6/Mpc, n_max=4, l_max=3):
+    the Jacobian at failure (neq=203) is genuinely near-singular, condition number ~1e16 (machine
+    precision), with 3 columns (state indices 1, 3, 5 -- photon delta_g, shear_g, and the l=4
+    photon multipole, in the post-tight-coupling variable ordering) numerically zero or near-zero.
+    This is suggestive but not fully conclusive on its own, since some Jacobian ill-conditioning at
+    such a tiny k may be generic to any species combination (the relevant couplings scale as k^2,
+    tiny for k~8e-6) -- this was not cross-checked against a comparably-conditioned ncdm Jacobian.
+
+    A more decisive test: forcing `gbh_FA_trigger` down to a tiny value (0.0001) so that *every* k,
+    including this problematic one, immediately uses the fluid approximation instead of the exact
+    hierarchy -- with everything else unchanged (still evolver=1, still m=5 eV) -- makes the run
+    succeed cleanly (sigma8=0.536, sane). This is the most direct evidence yet: the bug is
+    specifically in the **exact (non-fluid) hierarchy's RHS at low truncation order**
+    (small n_max/l_max, e.g. n_max=4/l_max=3), not in the fluid approximation, not a generic
+    small-k-with-ndf15 issue, and not shared with plain ncdm. The likely next step is to audit the
+    exact-hierarchy equations in `perturbations_derivs` (source/perturbations.c, the
+    `else{//GBH eqs}` block) specifically for correctness -- not just numerical conditioning -- at
+    very small n_max/l_max (e.g. an off-by-one or a fallback formula, such as the `ll==1` branch's
+    `sigma_np = 3/(1+w[1])*delta_next` shortcut, or the interaction between the simultaneous
+    n_max-boundary and l_max-boundary closures when n_max and l_max are both this small) rather
+    than assuming the equations are correct and only mis-integrated.
+
+    Code audit performed (this round): traced every array index used in the exact-hierarchy block
+    of perturbations_derivs (the else{//GBH eqs} block) by hand for n_max=4, l_max=3, including
+    the "corner" case where the n_max-boundary and l_max-boundary closures fire simultaneously
+    (n=n_max-1 AND ll=l_max at once) and the ll==1 fallback (sigma_np = 3/(1+w[1])*delta_next). No
+    out-of-bounds access or obviously wrong index/fallback was found. Note the existing code
+    comment: "DO NOT use l_max=2, because the truncation scheme...is gauge invariant only for
+    l_max>2" -- there is already a floor l_max>=3 for exactly this reason, and our failing case
+    sits right at that floor (l_max=3), i.e. at the theoretical minimum the author already flagged
+    as marginal.
+
+    Decisive follow-up test distinguishing "too-coarse truncation" from "genuine dynamics": reran
+    the same m=5eV/evolver=1 case with gbh_nl_max_method=1 (uniform n_max=19/l_max=10 for every k,
+    well above the small-k floor). This does *not* crash -- but produces the previously-reported
+    silent corruption instead (sigma8~1e11), from a *different*, mid-range k (~0.097/Mpc, not the
+    ~8e-6/Mpc mode above). So raising the truncation order does not fix the underlying issue, it
+    just changes which failure mode you get and which k triggers it -- ruling out "n_max/l_max too
+    small" as the root cause.
+    Dumping the state vector for that k (same debug hook) shows something new: Delta_gbh[n=0]
+    under ndf15 grows smoothly through a sign flip around tau~6390 Mpc (a~0.236, from ~-58 to ~+62)
+    and then runs away to >1e16 by the end of the integration. Under rk, at the exact same k and
+    the exact same tau range, Delta_gbh[n=0] stays smooth, monotonic, same sign throughout, an
+    order of magnitude smaller, with no runaway -- i.e. the two evolvers disagree in *sign*, not
+    just precision. Counting RHS evaluations in that same tau window: rk takes ~349, ndf15 only
+    ~46 (including repeated Jacobian-only calls that don't advance tau) -- roughly 7-8x fewer
+    genuine time steps. This is the signature of a stiff or rapidly-varying feature in the exact
+    hierarchy's dynamics that ndf15's adaptive step-size control under-resolves (accepts too large
+    a step based on its local error estimate, aliases through real structure, and the resulting
+    error compounds into a spurious runaway) -- a classic numerical under-resolution artifact, not
+    a formula/indexing bug (which the audit above did not find). rk's step size, tied directly to
+    physical timescales via perturbations_timescale rather than a measured local error, happens to
+    stay fine enough to track this feature by construction.
+
+    Current status: the failure is a genuine numerical-resolution problem in ndf15's handling of
+    the GBH exact hierarchy's fast/stiff dynamics (manifesting as either a hard stop at low
+    truncation order, or silent runaway at high truncation order, depending on which k/truncation
+    combination is involved) -- not a coding bug in the closure formulas or index arithmetic, which
+    were audited directly and found correct for the cases checked. A structural fix (e.g. a tighter
+    default tol_perturbations_integration specifically for GBH-active runs, or capping ndf15's
+    maximum step size directly rather than relying on its own error estimate) has not been
+    implemented. Until then, evolver=0 (rk) remains the only evolver validated for GBH at these
+    masses.
 DONE 80. perturbations_timescale (used only by evolver=0/rk to pick its step size) checked
     pba->has_ncdm but not pba->has_gbh when deciding whether to resolve tau_k=1/k in the step-size
     estimate -- meaning a GBH-only run's rk steps could ignore k entirely once radiation streaming
