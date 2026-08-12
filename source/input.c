@@ -2785,6 +2785,7 @@ int input_read_parameters_species(struct file_content * pfc,
                  "If you need tca disabled, you'll have to accept the GBH/ndf15 caveat above instead and\n"
                  "set evolver=ndf15 by hand.\n",
                  n, pba->m_gbh_in_eV[n]);
+          fflush(stdout);
           ppr->evolver = rk;
           break;
         }
