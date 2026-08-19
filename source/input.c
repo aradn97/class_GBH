@@ -1582,6 +1582,9 @@ int input_read_precisions(struct file_content * pfc,
   /** Summary: */
 
   /** - Define local variables */
+  int flag1; //GBH_pt
+  int int1; //GBH_pt
+  FileArg string1; //GBH_pt
 
   /** - Automatic estimate of machine precision */
   ppr->smallest_allowed_variation = DBL_EPSILON;
@@ -1603,6 +1606,13 @@ int input_read_precisions(struct file_content * pfc,
       It is the path relative to which CLASS will look for all files */
   strcpy(ppr->base_path,__CLASSDIR__);
 
+  /*GBH_pt_start*/
+  /** The GBH truncation scheme is likewise a special precision parameter: it is
+      user-facing as a string, so it cannot go through the integer-only macro
+      parse in precisions.h. Default to the aggressive scheme. */
+  ppr->gbh_truncation_scheme = 0; //GBH_pt
+  /*GBH_pt_end*/
+
   /** Read all precision parameters from input (these very concise
       lines parse all precision parameters thanks to the macros
       defined in macros_precision.h) */
@@ -1612,6 +1622,38 @@ int input_read_precisions(struct file_content * pfc,
 
   /** Now read the relative base path, overwriting possibly the default */
   class_read_string("base_path",ppr->base_path);
+
+  /*GBH_pt_start*/
+  /** Now read the GBH truncation scheme, overwriting possibly the default.
+      'aggressive' (0) lets n_max/l_max adapt per k, staying smaller on large
+      scales; 'conservative' (1) pins them to their gbh_FA_trigger values at
+      every scale, which is more accurate on large scales but slower. The bare
+      integers 0 and 1 are also accepted. */
+  class_call(parser_read_string(pfc,"gbh_truncation_scheme",&string1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+
+  if (flag1 == _TRUE_) {
+    if ((strstr(string1,"aggressive") != NULL) || (strstr(string1,"Aggressive") != NULL)) {
+      ppr->gbh_truncation_scheme = 0;
+    }
+    else if ((strstr(string1,"conservative") != NULL) || (strstr(string1,"Conservative") != NULL)) {
+      ppr->gbh_truncation_scheme = 1;
+    }
+    else if (sscanf(string1,"%d",&int1) == 1) {
+      class_test((int1 != 0) && (int1 != 1),
+                 errmsg,
+                 "You specified gbh_truncation_scheme = '%s'. As an integer it has to be 0 ('aggressive') or 1 ('conservative').",
+                 string1);
+      ppr->gbh_truncation_scheme = int1;
+    }
+    else {
+      class_stop(errmsg,
+                 "You specified gbh_truncation_scheme = '%s'. It has to be one of {'aggressive','conservative'} (or equivalently 0 or 1).",
+                 string1);
+    }
+  }
+  /*GBH_pt_end*/
 
   return _SUCCESS_;
 

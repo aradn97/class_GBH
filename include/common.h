@@ -423,6 +423,15 @@ struct precision
 
   char base_path[_BASEPATHSIZE_]; /**< the base path from which CLASS searches for all the files */
 
+  /*GBH_pt_start*/
+  int gbh_truncation_scheme; /**< truncation scheme for the GBH exact hierarchy: 0 = 'aggressive'
+                                  (per-k adaptive n_max/l_max, the default), 1 = 'conservative'
+                                  (n_max/l_max fixed at their gbh_FA_trigger values for every k).
+                                  User-facing as those strings; declared here rather than in
+                                  precisions.h because that macro generates an integer-only
+                                  parse. Default and parsing live in input_read_precisions. */ //GBH_pt
+  /*GBH_pt_end*/
+
   //@}
 
   /** @name - zone for writing error messages */

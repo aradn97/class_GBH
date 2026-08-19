@@ -166,7 +166,7 @@ DONE 65. save w_n's instead of P_n's?
 66. make sure you don't redundantly read precision parameters in input.c
 67. remove n_max_gbh as an input parameter if use_table is 1. It should be computed based on what we need for perturbations.
 Warn in the paper or to the user how large the table needs to be
-68. remove ppr->gbh_nl_max_method==1
+68. remove ppr->gbh_truncation_scheme==1 (the 'conservative' scheme)
 DONE (background_gbh_init now derives pba->n_max_gbh_table from the actual table file's column count, rather than trusting the input.c placeholder default of 31, and warns + falls back to gbh_use_table=0/quadrature if it's too small for the requested n_max_gbh; verified this triggers correctly with an oversized gbh_FA_trigger. The stale default of 31 is now only ever reached, harmlessly, when gbh_use_table=0 and the table is never read) 69. The error n_max_gbh_table<n_max_gbh is not being triggered when n_max_gbh_table is not given in the input and the default 31 is being used. either remove n_max_gbh totally or put error if the default of n_max_gbh_table is smaller than n_max_gbh
 DONE 70. set the default in input.c to pba->gbh_use_table = 1, and put the table somewhere so that user does not have to provide it.
 DONE 71. move w_n table to external
@@ -246,7 +246,8 @@ DONE 78. dont call class_call(background_ncdm_momenta(pba->q_gbh_bg, ...)) in th
     as marginal.
 
     Decisive follow-up test distinguishing "too-coarse truncation" from "genuine dynamics": reran
-    the same m=5eV/evolver=1 case with gbh_nl_max_method=1 (uniform n_max=19/l_max=10 for every k,
+    the same m=5eV/evolver=1 case with the conservative truncation scheme (at the time named
+    gbh_nl_max_method=1; now gbh_truncation_scheme=conservative -- uniform n_max=19/l_max=10 for every k,
     well above the small-k floor). This does *not* crash -- but produces the previously-reported
     silent corruption instead (sigma8~1e11), from a *different*, mid-range k (~0.097/Mpc, not the
     ~8e-6/Mpc mode above). So raising the truncation order does not fix the underlying issue, it

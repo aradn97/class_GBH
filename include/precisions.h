@@ -87,10 +87,10 @@ class_precision_parameter(tol_gbh_newtonian,double,1.e-5)
  * or use w_n's from background.
  */
 class_precision_parameter(gbh_init_condition_integrate,int,_FALSE_)
-/**
- * what method to use for choosing n_max and l_max
- */
-class_precision_parameter(gbh_nl_max_method,int,0)
+/* Note: the truncation scheme for choosing n_max and l_max, ppr->gbh_truncation_scheme,
+   is user-facing as the strings 'aggressive'/'conservative' and so cannot be declared
+   here (this macro generates an integer-only parse). It is declared manually in
+   struct precision and parsed in input_read_precisions, like base_path. */
 /*GBH_pt_end*/
 /**
  * Tolerance on the deviation of the conformal time of equality from the true value in 1/Mpc.

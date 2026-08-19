@@ -3971,11 +3971,11 @@ int perturbations_vector_init(
       ppv->N_gbh = pba->N_gbh;
       class_alloc(ppv->n_max_gbh,ppv->N_gbh*sizeof(int),ppt->error_message);
       class_alloc(ppv->l_max_gbh,ppv->N_gbh*sizeof(int),ppt->error_message);
-      class_test(ppr->gbh_nl_max_method!=0. && ppr->gbh_nl_max_method!=1., ppt->error_message,
-                  "gbh_nl_max_method should be either 0 or 1.");
+      class_test(ppr->gbh_truncation_scheme!=0 && ppr->gbh_truncation_scheme!=1, ppt->error_message,
+                  "gbh_truncation_scheme should be 0 ('aggressive') or 1 ('conservative').");
       for (species_k=0; species_k<pba->N_gbh; species_k++){
         x = k * pba->gbh_horizon[species_k];
-        if(ppr->gbh_nl_max_method==0){
+        if(ppr->gbh_truncation_scheme==0){ //aggressive: n_max/l_max adapt with k, capped at their gbh_FA_trigger values
           ppv->n_max_gbh[species_k] = std::min(static_cast<int>(ceil(pow(x,1.6)/5.)+3.),static_cast<int>(ceil(pow(ppr->gbh_FA_trigger,1.6)/5.)+3.));
           ppv->l_max_gbh[species_k] = std::min(static_cast<int>(ceil(x/2.)+2.),static_cast<int>(ceil(ppr->gbh_FA_trigger/2.)+2.));
           if(ppv->l_max_gbh[species_k]<3){
@@ -3985,7 +3985,7 @@ int perturbations_vector_init(
             ppv->n_max_gbh[species_k] = 1;
           }
         }
-        else if(ppr->gbh_nl_max_method==1){ //this method will be removed in the future
+        else if(ppr->gbh_truncation_scheme==1){ //conservative: n_max/l_max fixed at their gbh_FA_trigger values for every k
           ppv->n_max_gbh[species_k] = static_cast<int>(ceil(pow(ppr->gbh_FA_trigger,1.6)/5.)+3.); //should be 16 + 3 = 19
           ppv->l_max_gbh[species_k] = static_cast<int>(ceil(ppr->gbh_FA_trigger/2.)+2.); //should be 8 + 2 = 10
         }
