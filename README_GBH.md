@@ -295,3 +295,14 @@ DONE 81. The ncdm dispersive fluid approximation (ncdm_fluid_approximation=4) ra
     approximation the perturbation module will use. (a) verified at -88% of the excess; (b)'s
     speed-up was below the noise floor on the test machine and needs re-measuring. Full write-up,
     including two debugging traps, in README_DFA_cost.md.
+DONE 82. Applied item 81's k_fs simplification to the gbh fluid approximation
+    (gbh_fluid_approximation=3) as well: k_fs = kfs_prefactor/sqrt(a*c_asp^2) in place of two pow()
+    and two sqrt() per species per RHS evaluation, reusing the same pba->kfs_prefactor. GBH output
+    is bitwise unchanged. Note the gbh side has NO analogue of item 81(a): w_{-1} is a spline
+    interpolation of a precomputed table under the default gbh_use_table=1 (and one extra term in
+    a loop that already runs under gbh_use_table=0), and index_bg_w_min1_gbh1 is defined on
+    has_gbh rather than on the FA method, so the table layout does not depend on the method. The
+    commented-out //if (pba->gbh_fluid_approximation == gbh_fa_caio) around that interpolation in
+    background.c should stay commented out for that reason. Microbenchmark: 5.92 -> 0.54 ns per
+    call for the k_fs expression; the end-to-end saving was below the noise floor on the test
+    machine and still needs measuring.

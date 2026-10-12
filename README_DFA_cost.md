@@ -251,6 +251,64 @@ during an actual run and agreed to 12 significant figures.
 
 ---
 
+## The same fix for the GBH fluid approximation
+
+`gbh_fluid_approximation = 3` (`gbh_fa_caio`) carries a structurally identical
+block in `perturbations_derivs`, and problem 2's identity applies to it verbatim:
+
+```c
+lambda_gbh = pvecback[pba->index_bg_w_min1_gbh1+species_k];
+c2_asp = (1. + w_gbh) / (1. + lambda_gbh) / 3.;
+k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);   /* was two pow() and two sqrt() */
+```
+
+`pba->kfs_prefactor` is shared, so this needed no new state. With the last use of
+`Omega_m` gone, that local was dropped from the declaration list.
+
+**The GBH has no problem-1 analogue, and this is worth understanding rather than
+assuming.** Its counterpart of `P_{-1}` is `w_{-1}`, stored at
+`index_bg_w_min1_gbh1`. Two differences make it free:
+
+- Under the default `gbh_use_table = 1`, `w_{-1}` is obtained by spline
+  interpolation of a precomputed table, not by quadrature at every background
+  step. Under `gbh_use_table = 0` it comes from `background_gbh_momenta`, but that
+  branch is already accumulating every `P_n` moment for the hierarchy, so `P_min1`
+  is one more term in a loop that has to run regardless.
+- `index_bg_w_min1_gbh1` is defined on `pba->has_gbh`, **not** on the fluid
+  approximation, so the background table layout does not depend on the method and
+  the trap that forced the `compute_P_min1` flag does not arise here.
+
+There is a commented-out `//if (pba->gbh_fluid_approximation == gbh_fa_caio) {`
+around the `w_{-1}` interpolation in `background.c`, evidently the GBH-side version
+of item 77. Leaving it disabled is the right call: gating it would save only a
+spline evaluation while making the table layout method-dependent, which is exactly
+what made the ncdm fix delicate.
+
+### Verification
+
+Output is **bitwise identical** to the unpatched binary for a GBH run
+(`N_gbh = 1`, `m_gbh = 0.06`, `gbh_fluid_approximation = 3`, `h` supplied). Unlike
+the ncdm case there is no `5.95e-08` shift, because `w_{-1}` is unaffected by
+problem 1 and so the shooting path never changes.
+
+Timing could **not** be resolved on the test machine. With 21 interleaved
+repetitions, the DFA arm moved 914.7 -> 902.2 ms, but a control arm using
+`gbh_fluid_approximation = 2` — a code path this change does not touch, and which
+must therefore be identical — differed by 33.0 ms between the two binaries. The
+noise exceeded the effect. Microbenchmarked in isolation, the substitution is worth
+
+| | ns/call |
+|---|---|
+| `sqrt(3/2 * Omega0_m/a^3 * (H0/(aH/a))^2) * aH / sqrt(c_asp^2)` | 5.92 |
+| `kfs_prefactor / sqrt(a*c_asp^2)` | 0.54 |
+
+i.e. **5.4 ns saved per species per RHS evaluation**, an 11x speed-up of that
+expression, for both the ncdm and GBH branches. Turning that into a wall-clock
+figure requires knowing the number of RHS evaluations in the fluid phase, so it
+should be measured end to end on a quiet machine before being quoted.
+
+---
+
 ## Two traps worth remembering
 
 **`pba->Omega0_m` does not exist until the background table is finished.** It is
@@ -272,9 +330,7 @@ outputs explicitly in any A/B harness.
 - Which input parameter you supply changes the measured DFA penalty by roughly a
   factor of two, because problem 1 only bites when CLASS shoots. A run given `h`
   directly never pays it. Any quoted timing should state which was used.
-- The GBH fluid approximation has the same per-step pattern as problem 2 in
-  `perturbations_derivs` (its own `c2_asp` / `Omega_m` / `k_fs` block), and the
-  same identity applies there. That has **not** been changed, and is the obvious
-  next candidate.
+- The GBH fluid approximation received the same problem-2 fix; see the section
+  above. It has no problem-1 analogue.
 - `classy` must be rebuilt (`make && pip install .`) before any of this is visible
   from Python; the verification above used the standalone `./class` binary only.

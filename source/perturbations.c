@@ -9666,7 +9666,7 @@ int perturbations_derivs(double tau,
 
   /* for GBH species*/
   /*GBH_pt_start*/ 
-  double w_gbh,w2_gbh,rho_gbh,ca2_gbh,c2_asp,k_fs,Omega_m,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,delta_l2=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.;
+  double w_gbh,w2_gbh,rho_gbh,ca2_gbh,c2_asp,k_fs,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,delta_l2=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.;
   double lambda_gbh,sigma_gbh;
   int species_k; //GBH_pt
   /*GBH_pt_end*/
@@ -10574,8 +10574,12 @@ int perturbations_derivs(double tau,
       if (ppr->gbh_fluid_approximation == gbh_fa_caio) {
         lambda_gbh = pvecback[pba->index_bg_w_min1_gbh1+species_k]; /*w_{-1} of gbh species*/
         c2_asp = (1. + w_gbh) / (1. + lambda_gbh) / 3.;
-        Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/(a_prime_over_a/a),2.);
-        k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp);
+        /* Omega_m(a) = Omega0_m a^-3 (H0/H)^2 makes H cancel out of
+           sqrt(3/2 Omega_m)*aH/sqrt(c_asp^2), leaving a constant (kfs_prefactor,
+           set in background_solve) over sqrt(a*c_asp^2). This replaces two pow()
+           and one sqrt() per species per RHS evaluation. Same identity as the
+           ncdm caio branch above. //GBH_pt */
+        k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);
 
         cvis2_gbh = 3.*w_gbh*ca2_gbh;
         ceff2_gbh = ca2_gbh + (c2_asp - ca2_gbh) * exp(-4. / 3. * k_fs / k);
