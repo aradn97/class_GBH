@@ -2829,7 +2829,7 @@ int input_read_parameters_species(struct file_content * pfc,
       for (n=0; n<N_gbh; n++){
         if (pba->m_gbh_in_eV[n] > _GBH_NDF15_MAX_MASS_IN_EV_){
           printf("Warning: GBH species %d has mass %.2f eV (> %.2f eV). evolver=ndf15 is known to produce\n"
-                 "incorrect results for the GBH exact hierarchy above roughly 1.5-2 eV -- it either crashes\n"
+                 "incorrect results for the GBH exact hierarchy above this mass -- it either crashes\n"
                  "outright or silently corrupts the power spectrum by many orders of magnitude.\n"
                  "Automatically switching to evolver=rk for this run instead. This is a temporary\n"
                  "workaround; a proper numerical fix for ndf15 at these masses has not yet been implemented.\n"
