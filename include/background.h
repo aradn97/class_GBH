@@ -101,6 +101,11 @@ struct background
   int * ncdm_input_q_size; /**< Vector of numbers of q bins */
   double * ncdm_qmax;      /**< Vector of maximum value of q */
   int ncdm_fluid_approximation;           /*FA method in ncdm perturbations. We need this so that if it is caio, we should compute P_{-1} in background*/
+  short compute_P_min1;    /**< when _FALSE_, skip the P_{-1} momentum integral and store zero instead,
+                                even if ncdm_fluid_approximation is caio. The index is still defined, so
+                                the background table keeps the same layout either way. Set _FALSE_ only for
+                                the shooting trials in input_try_unknown_parameters, which never reach the
+                                perturbation module that reads P_{-1}. /ncdm_caio_fa/ */
 
   /*GBH_bg_start*/
   int last_index_gbh_rho;       /**< this will be used by spline function to perform faster binary searches when interpolating, using  the previous interpolated index */
@@ -218,6 +223,9 @@ struct background
   int index_bg_p_prime_scf;   /**< scalar field pressure */
 
   int index_bg_P_min1_ncdm1;  /**< P_{-1} of first ncdm species (others contiguous) */
+  double kfs_prefactor;       /**< sqrt(3/2 Omega0_m)*H0, the constant in the DFA free-streaming scale
+                                   k_fs = kfs_prefactor/sqrt(a*c_asp^2). Set in background_solve, once
+                                   Omega0_m is known. /ncdm_caio_fa/ */
   int index_bg_rho_ncdm1;     /**< density of first ncdm species (others contiguous) */
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
   int index_bg_pseudo_p_ncdm1;/**< another statistical momentum useful in ncdma approximation */

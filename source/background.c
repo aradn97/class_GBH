@@ -521,7 +521,7 @@ int background_functions(
                                          &p_ncdm,
                                          NULL,
                                          &pseudo_p_ncdm,
-                                         (pba->ncdm_fluid_approximation == ncdmfa_caio) ? &p_min1_ncdm : NULL), /*ncdm_caio_fa*/
+                                         ((pba->ncdm_fluid_approximation == ncdmfa_caio) && (pba->compute_P_min1 == _TRUE_)) ? &p_min1_ncdm : NULL), /*ncdm_caio_fa*/
                  pba->error_message,
                  pba->error_message);
 
@@ -532,7 +532,11 @@ int background_functions(
       pvecback[pba->index_bg_p_ncdm1+n_ncdm] = p_ncdm;
       p_tot += p_ncdm;
       if (pba->ncdm_fluid_approximation == ncdmfa_caio){
-        pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] = p_min1_ncdm; /*ncdm_caio_fa*/
+        /* The index is defined whenever the FA is caio, so the column exists either
+           way; when compute_P_min1 is _FALSE_ (shooting trials) we store zero rather
+           than leaving it uninitialised for the spline. /ncdm_caio_fa/ */
+        pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] =
+          (pba->compute_P_min1 == _TRUE_) ? p_min1_ncdm : 0.;
       }
       pvecback[pba->index_bg_pseudo_p_ncdm1+n_ncdm] = pseudo_p_ncdm;
 
@@ -732,6 +736,7 @@ int background_functions(
 
   /** - compute derivative of H with respect to conformal time */
   pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
+
 
   /* Total energy density*/
   pvecback[pba->index_bg_rho_tot] = rho_tot;
@@ -2766,6 +2771,10 @@ int background_solve(
 
   /**  - store information in the background structure */
   pba->Omega0_m = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_m];
+  /*ncdm_caio_fa*/
+  /* Constant part of the DFA free-streaming scale. Must be set here, not in
+     background_functions: Omega0_m is only known once the table above is complete. */
+  pba->kfs_prefactor = sqrt(1.5*pba->Omega0_m)*pba->H0;
   pba->Omega0_r = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_r];
   pba->Omega0_de = 1. - (pba->Omega0_m + pba->Omega0_r + pba->Omega0_k);
 

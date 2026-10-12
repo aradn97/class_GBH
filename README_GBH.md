@@ -282,3 +282,16 @@ DONE 80. perturbations_timescale (used only by evolver=0/rk to pick its step siz
     estimate -- meaning a GBH-only run's rk steps could ignore k entirely once radiation streaming
     turned on, even while a GBH species was still in its exact (non-fluid) hierarchy needing
     k-resolved steps. Fixed by adding the missing pba->has_gbh check.
+DONE 81. The ncdm dispersive fluid approximation (ncdm_fluid_approximation=4) ran ~1.4x the
+    massive-neutrino overhead of the default CLASS fluid approximation, despite both switching at
+    the same trigger (k*tau > 31). Two causes, both fixed: (a) P_{-1} was recomputed on every
+    shooting trial -- input_try_unknown_parameters runs background_init per trial, 6 trials plus
+    the real run, so item 77's extra momentum integral was paid 7 times; now gated on a new
+    pba->compute_P_min1, cleared for trials only. (b) lambda, c_asp^2, Omega_m and k_fs were
+    rebuilt for every k at every RHS evaluation although they depend on a alone; k_fs now uses the
+    identity k_fs = sqrt(3/2 Omega0_m)*H0/sqrt(a*c_asp^2), which cancels H and both pow() calls,
+    with the constant precomputed as pba->kfs_prefactor in background_solve. CFA output is bitwise
+    unchanged; DFA output moves by 5.95e-08 because the shot h no longer depends on which fluid
+    approximation the perturbation module will use. (a) verified at -88% of the excess; (b)'s
+    speed-up was below the noise floor on the test machine and needs re-measuring. Full write-up,
+    including two debugging traps, in README_DFA_cost.md.

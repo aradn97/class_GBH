@@ -10431,10 +10431,13 @@ int perturbations_derivs(double tau,
           }
           /*ncdm_caio_fa*/
           if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
-            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;   
+            lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
             c2_asp = (1. + w_ncdm) / (1. + lambda_ncdm) / 3.;
-            Omega_m = pba->Omega0_m/pow(a,3.)*pow(pba->H0/(a_prime_over_a/a),2.);
-            k_fs = sqrt(3. / 2. * Omega_m) * a_prime_over_a / sqrt(c2_asp); 
+            /* Omega_m(a) = Omega0_m a^-3 (H0/H)^2 makes H cancel out of
+               sqrt(3/2 Omega_m)*aH/sqrt(c_asp^2), leaving a constant (kfs_prefactor,
+               set in background_solve) over sqrt(a*c_asp^2). This replaces two pow()
+               and one sqrt() per species per RHS evaluation. /ncdm_caio_fa/ */
+            k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);
 
             cvis2_ncdm = 3.*w_ncdm*ca2_ncdm; 
             ceff2_ncdm = ca2_ncdm + (c2_asp - ca2_ncdm) * exp(-4. / 3. * k_fs / k);

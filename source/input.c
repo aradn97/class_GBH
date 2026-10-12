@@ -1403,6 +1403,15 @@ int input_try_unknown_parameters(double * unknown_parameter,
     if (input_verbose>2)
       printf("Stage 1: background\n");
     ba.background_verbose = 0;
+    /*ncdm_caio_fa*/
+    /* P_{-1} is read in exactly one place -- the ncdm dispersive fluid
+       approximation in perturbations_derivs -- which a shooting trial never
+       reaches, since the trial stops at cs_background or cs_thermodynamics.
+       Computing it costs one extra momentum integral per quadrature node per
+       background step, on every one of the several trial evaluations. Skip it
+       here; the background table keeps the same layout (the index is still
+       defined) and the final, non-trial background_init computes it normally. */
+    ba.compute_P_min1 = _FALSE_;
     class_call_except(background_init(&pr,&ba), ba.error_message, errmsg, background_free_input(&ba);thermodynamics_free_input(&th);perturbations_free_input(&pt););
   }
 
@@ -2751,6 +2760,7 @@ int input_read_parameters_species(struct file_content * pfc,
     }
 
     pba->ncdm_fluid_approximation = ppr->ncdm_fluid_approximation; // this is added to bg structure to avoid calculating P_{-1} when FA is not caio. /*ncdm_caio_fa*/
+    pba->compute_P_min1 = _TRUE_; /*ncdm_caio_fa*/ /* overridden only for shooting trials */
 
   }
   class_test(pba->Omega0_ncdm_tot<0,errmsg,"You cannot set the NCDM density to negative values.");
@@ -6070,6 +6080,7 @@ int input_default_params(struct background *pba,
   pba->deg_ncdm = NULL;
   /** 5.h) ncdm FA method */
   pba->ncdm_fluid_approximation = ncdmfa_CLASS; 
+  pba->compute_P_min1 = _TRUE_; /*ncdm_caio_fa*/
   /** 5.i) --> See read_parameters_background */
 
 
