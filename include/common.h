@@ -68,6 +68,17 @@ typedef char FileName[_FILENAMESIZE_+_BASEPATHSIZE_];
 
 #define _DELIMITER_ "\t" /**< character used for delimiting titles in the title strings */
 
+/*GBH_pt_start*/
+#define _GBH_NDF15_MAX_MASS_IN_EV_ 0.5 /**< heaviest GBH species for which evolver=ndf15 is trusted;
+                                            above this, input.c forces evolver=rk and warns. The
+                                            observed failure onset is ~1.5-2 eV (see README_GBH.md
+                                            item 79), but part of that range fails silently, so the
+                                            threshold is set well below it: switching too early
+                                            costs a slower run, switching too late costs a wrong
+                                            power spectrum. Comparison is strict (>), so a species
+                                            at exactly this mass still uses ndf15. */ //GBH_pt
+/*GBH_pt_end*/
+
 #ifndef __CLASSDIR__
 #define __CLASSDIR__ "." /**< The directory of CLASS. This is set to the absolute path to the CLASS directory so this is just a failsafe. */
 #endif

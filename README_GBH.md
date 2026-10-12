@@ -306,3 +306,13 @@ DONE 82. Applied item 81's k_fs simplification to the gbh fluid approximation
     background.c should stay commented out for that reason. Microbenchmark: 5.92 -> 0.54 ns per
     call for the k_fs expression; the end-to-end saving was below the noise floor on the test
     machine and still needs measuring.
+DONE 83. Lowered the automatic evolver=ndf15 -> evolver=rk switch for GBH species from 1 eV to
+    0.5 eV, and moved the threshold out of the inline literal into _GBH_NDF15_MAX_MASS_IN_EV_ in
+    include/common.h so the warning text and the test stay in sync. The observed ndf15 failure
+    onset is ~1.5-2 eV (item 79), but part of that range fails silently rather than crashing, so
+    the threshold is deliberately well below it: switching too early costs a slower run, switching
+    too late costs a wrong power spectrum. Comparison stays strict (>), so a species at exactly
+    0.5 eV still uses ndf15. Verified: 0.3 and 0.5 eV stay on ndf15, 0.6 and 1.0 eV switch.
+    NOTE for anyone reproducing earlier timing runs: m_gbh=1 eV with evolver=1 was a genuine ndf15
+    run under the old threshold and is an rk run under the new one, so the 1 eV ndf15 GBH entries
+    in final_timings_v4_* cannot be reproduced without raising this constant back.

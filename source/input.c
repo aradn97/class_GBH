@@ -2821,11 +2821,14 @@ int input_read_parameters_species(struct file_content * pfc,
     /*GBH_pt_start*/
     /* evolver=ndf15 is known to crash or silently corrupt the GBH exact hierarchy above roughly
        1.5-2 eV; evolver=rk does not show this. Until that is fixed numerically, force rk above a
-       1 eV mass threshold rather than let a user unknowingly get a corrupted power spectrum. */
+       0.5 eV mass threshold rather than let a user unknowingly get a corrupted power spectrum.
+       The threshold sits well below the observed 1.5-2 eV onset deliberately: the failure is
+       silent in part of its range, so the cost of switching too early (a slower but correct run)
+       is much lower than the cost of switching too late. */
     if (ppr->evolver == ndf15) {
       for (n=0; n<N_gbh; n++){
-        if (pba->m_gbh_in_eV[n] > 1.){
-          printf("Warning: GBH species %d has mass %.2f eV (> 1 eV). evolver=ndf15 is known to produce\n"
+        if (pba->m_gbh_in_eV[n] > _GBH_NDF15_MAX_MASS_IN_EV_){
+          printf("Warning: GBH species %d has mass %.2f eV (> %.2f eV). evolver=ndf15 is known to produce\n"
                  "incorrect results for the GBH exact hierarchy above roughly 1.5-2 eV -- it either crashes\n"
                  "outright or silently corrupts the power spectrum by many orders of magnitude.\n"
                  "Automatically switching to evolver=rk for this run instead. This is a temporary\n"
@@ -2836,7 +2839,7 @@ int input_read_parameters_species(struct file_content * pfc,
                  "handle the fully tightly-coupled photon-baryon system without that approximation active.\n"
                  "If you need tca disabled, you'll have to accept the GBH/ndf15 caveat above instead and\n"
                  "set evolver=ndf15 by hand.\n",
-                 n, pba->m_gbh_in_eV[n]);
+                 n, pba->m_gbh_in_eV[n], _GBH_NDF15_MAX_MASS_IN_EV_);
           fflush(stdout);
           ppr->evolver = rk;
           break;
