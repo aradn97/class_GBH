@@ -6095,6 +6095,21 @@ int input_default_params(struct background *pba,
   pba->deg_gbh_default = 1.;
   pba->deg_gbh = NULL;
   pba->gbh_fa_group = NULL;
+  /* NULL until allocated (background_gbh_init / background_solve), so that a free on a struct
+     which never got that far is a no-op instead of a free of stack garbage */
+  pba->factor_gbh = NULL;
+  pba->x_gbh_bg = NULL;
+  pba->x_gbh_bg_rho = NULL;
+  pba->w_gbh_bg = NULL;
+  pba->d2w_gbh_bg = NULL;
+  pba->rho_gbh_bg = NULL;
+  pba->d2rho_gbh_bg = NULL;
+  pba->q_gbh_bg = NULL;
+  pba->weights_gbh_bg = NULL;
+  pba->q_gbh = NULL;
+  pba->weights_gbh = NULL;
+  pba->dlnf0_dlnq_gbh = NULL;
+  pba->gbh_horizon = NULL;
   pba->gbh_use_table = 1; // default: use table for gbh.
   pba->gbh_init_condition_integrate = 0; // default: use the exact initial conditions for perturbations in real space
   pba->n_max_gbh = 20;

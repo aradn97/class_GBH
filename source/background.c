@@ -1107,7 +1107,11 @@ int background_free_input(
       free(pba->ncdm_psd_parameters);
   }
   /*GBH_bg_start*/
-  if(pba->has_gbh == _TRUE_){
+  /* Gate on N_gbh, not has_gbh: everything freed below is allocated in input_read_parameters
+     under N_gbh > 0 (background_gbh_init is called from there), while has_gbh is only set later,
+     in background_indices. input_get_guess frees a struct that never went through background_init,
+     so has_gbh was uninitialised there and any 100*theta_s run could free garbage pointers. */
+  if (pba->N_gbh > 0) {
 
     free(pba->m_gbh_in_eV);
     free(pba->M_gbh);

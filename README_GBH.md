@@ -316,3 +316,14 @@ DONE 83. Lowered the automatic evolver=ndf15 -> evolver=rk switch for GBH specie
     NOTE for anyone reproducing earlier timing runs: m_gbh=1 eV with evolver=1 was a genuine ndf15
     run under the old threshold and is an rk run under the new one, so the 1 eV ndf15 GBH entries
     in final_timings_v4_* cannot be reproduced without raising this constant back.
+DONE 84. Fixed a crash (SIGABRT, "pointer being freed was not allocated") in every classy run that
+    sets 100*theta_s, even with N_gbh = 0 and N_ncdm = 0. Shooting for h goes through
+    input_get_guess, which fills a local background struct with input_read_parameters only and frees
+    it with background_free_input without ever calling background_init. The GBH block of
+    background_free_input was gated on has_gbh, which is only set in background_indices, so there it
+    was uninitialised stack memory; when it happened to equal 1 the block freed factor_gbh and the
+    table/quadrature pointers, none of which existed. Fix: gate that block on N_gbh > 0 instead,
+    which matches exactly where its arrays are allocated (input_read_parameters, including the call
+    to background_gbh_init). Also set factor_gbh, the w/rho table arrays, the q/weights arrays,
+    dlnf0_dlnq_gbh and gbh_horizon to NULL in input_default_params. The standalone ./class binary
+    happened not to crash (different stack contents), so test this through classy.
