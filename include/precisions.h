@@ -429,7 +429,7 @@ class_precision_parameter(neglect_CMB_sources_below_visibility,double,1.0e-3)
 /**
  * The type of evolver to use: options are ndf15 or rk
  */
-class_type_parameter(evolver,int,enum evolver_type,rk)//test ndf15)
+class_type_parameter(evolver,int,enum evolver_type,rk)
 
 /*
  * Primordial parameters

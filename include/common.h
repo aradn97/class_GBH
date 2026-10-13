@@ -436,8 +436,8 @@ struct precision
 
   /*GBH_pt_start*/
   int gbh_truncation_scheme; /**< truncation scheme for the GBH exact hierarchy: 0 = 'aggressive'
-                                  (per-k adaptive n_max/l_max, the default), 1 = 'conservative'
-                                  (n_max/l_max fixed at their gbh_FA_trigger values for every k).
+                                  (per-k adaptive n_max/l_max), 1 = 'conservative'
+                                  (n_max/l_max fixed at their gbh_FA_trigger values for every k, the default).
                                   User-facing as those strings; declared here rather than in
                                   precisions.h because that macro generates an integer-only
                                   parse. Default and parsing live in input_read_precisions. */ //GBH_pt

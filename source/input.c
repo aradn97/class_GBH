@@ -1618,8 +1618,8 @@ int input_read_precisions(struct file_content * pfc,
   /*GBH_pt_start*/
   /** The GBH truncation scheme is likewise a special precision parameter: it is
       user-facing as a string, so it cannot go through the integer-only macro
-      parse in precisions.h. Default to the aggressive scheme. */
-  ppr->gbh_truncation_scheme = 0; //GBH_pt
+      parse in precisions.h. Default to the conservative scheme. */
+  ppr->gbh_truncation_scheme = 1; //GBH_pt
   /*GBH_pt_end*/
 
   /** Read all precision parameters from input (these very concise

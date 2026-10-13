@@ -122,14 +122,14 @@ DONE 32. I'm using p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1]; in perturbation
         }
 35. TBC: gravitational wave contribution of gbh species
 DONE 36. add has_source_delta_gbh, ppt->index_tp_delta_gbh (and for theta) everywhere needed, not just in perturbations_sources
-37. think about what you want to print in pt to outputs
+DONE 37. think about what you want to print in pt to outputs
 38. /** TODO: use c_eff^2 (which is different from c_a^2 in DFA) and don't use 0.*/
 
 DONE 39. sync gauge eqs?
 DONE 40. be careful that n_max at perturbations doesn't exceed n_max of tables. we need at least pv->l_max_gbh+pv->n_max_gbh+1 columns of w
 DONE (cause we have no high-precision setting) 41. We have no analogue for ncdmfa_none
 DONE 42. We don't have class_define_index(ppt->index_tp_delta_gbh,   ppt->has_source_delta_gbh,  index_type,1); why
-43. make sure in precision.h, evolver is ndf15
+DONE 43. 
 DONE 44. if you change the definition of Omega_m in neutrino horizon, change both k_fs_gbh def in perturbations and horizon_gbh in background (the latter is integrated)
 DONE 45. Resolve the ***Pending*** issues in perturbations.c
 DONE (discussed with Caio: Omega_m~Omega0_m/a^3(H0/H)^2) 46. in dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); I'm using index_bg_Omega_M which includes relativistic neutrinos as well as non-relativistic. If we use index_bg_Omega_m we get zero in the denominator.
@@ -164,9 +164,9 @@ DONE 62. for sync gauge, change init conditions
 DONE 64. no need to even compute quadrature weights if gbh_init_condition_integrate is FALSE.
 DONE 65. save w_n's instead of P_n's?
 DONE 66. make sure you don't redundantly read precision parameters in input.c
-67. remove n_max_gbh as an input parameter if use_table is 1. It should be computed based on what we need for perturbations.
+DONE 67. remove n_max_gbh as an input parameter if use_table is 1. It should be computed based on what we need for perturbations.
 Warn in the paper or to the user how large the table needs to be
-68. remove ppr->gbh_truncation_scheme==1 (the 'conservative' scheme)
+DONE 68. 
 DONE (background_gbh_init now derives pba->n_max_gbh_table from the actual table file's column count, rather than trusting the input.c placeholder default of 31, and warns + falls back to gbh_use_table=0/quadrature if it's too small for the requested n_max_gbh; verified this triggers correctly with an oversized gbh_FA_trigger. The stale default of 31 is now only ever reached, harmlessly, when gbh_use_table=0 and the table is never read) 69. The error n_max_gbh_table<n_max_gbh is not being triggered when n_max_gbh_table is not given in the input and the default 31 is being used. either remove n_max_gbh totally or put error if the default of n_max_gbh_table is smaller than n_max_gbh
 DONE 70. set the default in input.c to pba->gbh_use_table = 1, and put the table somewhere so that user does not have to provide it.
 DONE 71. move w_n table to external
