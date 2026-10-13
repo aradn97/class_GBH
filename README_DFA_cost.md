@@ -1,13 +1,13 @@
 # Why the ncdm DFA was slower than the default fluid approximation, and what was done about it
 
 This note records two separate performance problems found in the `ncdm` dispersive
-fluid approximation (`ncdm_fluid_approximation = 4`, `ncdmfa_caio`, tagged
-`/*ncdm_caio_fa*/` throughout the source), and the fixes applied to each. It also
+fluid approximation (`ncdm_fluid_approximation = 4`, `ncdmfa_DFA`, tagged
+`/*ncdm_DFA_fa*/` throughout the source), and the fixes applied to each. It also
 records the traps hit along the way, because two of them are easy to fall into
 again.
 
 See item 77 of `README_GBH.md` for the original decision to compute `P_{-1}` only
-when the fluid approximation is caio; this note is the follow-up to that.
+when the fluid approximation is DFA; this note is the follow-up to that.
 
 ## Background: what was observed
 
@@ -26,7 +26,7 @@ flat across four decades in neutrino mass. This mattered because the DFA is
 recommended for use inside the standard `ncdm` module independently of the GBH, so
 its cost is a cost everyone pays.
 
-The trigger is **not** the explanation. `ncdmfa_CLASS` and `ncdmfa_caio` switch at
+The trigger is **not** the explanation. `ncdmfa_CLASS` and `ncdmfa_DFA` switch at
 exactly the same time: `perturbations.c`, in `perturbations_approximations`,
 
 ```c
@@ -60,7 +60,7 @@ already accumulates `rho`, `p` and `pseudo_p`:
 if (p_min1!=NULL) *p_min1 += pow(epsilon,3.)/3.*wvec[index_q];
 ```
 
-and the call site gates it on the fluid approximation being caio, so a CFA run pays
+and the call site gates it on the fluid approximation being DFA, so a CFA run pays
 nothing. On its own this costs about **2 ms per background evaluation** for a
 one-species setup at default precision, a ~26% increase to the background module.
 That alone is not a problem.
@@ -84,7 +84,7 @@ Measured, isolating the background stage:
 15.5 / 2.1 = 7.4, matching the 6 trials plus one real run almost exactly. Nothing
 in `background_init` consumes `P_{-1}` — it is written in one place
 (`background.c`, storing into `index_bg_P_min1_ncdm1`) and read in exactly one
-other (`perturbations.c`, inside the caio branch of the fluid approximation), which
+other (`perturbations.c`, inside the DFA branch of the fluid approximation), which
 a shooting trial never reaches, since the trial stops at `cs_background` or
 `cs_thermodynamics`.
 
@@ -98,7 +98,7 @@ A dedicated flag, `pba->compute_P_min1` (`include/background.h`):
   immediately beside the existing `ba.background_verbose = 0` (the trial works on
   its own local `struct background`, so the real run is untouched);
 - checked at the `background_ncdm_momenta` call site, which now reads
-  `((pba->ncdm_fluid_approximation == ncdmfa_caio) && (pba->compute_P_min1 == _TRUE_))`.
+  `((pba->ncdm_fluid_approximation == ncdmfa_DFA) && (pba->compute_P_min1 == _TRUE_))`.
 
 When the flag is `_FALSE_` the slot is filled with `0.` rather than left unwritten,
 so the column is never splined from uninitialised memory.
@@ -107,10 +107,10 @@ so the column is never splined from uninitialised memory.
 
 The first attempt simply set `ba.ncdm_fluid_approximation = ncdmfa_CLASS` on the
 trial. That works for the gate, but **`index_bg_P_min1_ncdm1` is also defined
-conditionally on caio** in `background_indices`:
+conditionally on DFA** in `background_indices`:
 
 ```c
-if (pba->ncdm_fluid_approximation == ncdmfa_caio){
+if (pba->ncdm_fluid_approximation == ncdmfa_DFA){
   class_define_index(pba->index_bg_P_min1_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
 }
 ```
@@ -138,7 +138,7 @@ this measurement is tight.
 
 ### What was happening
 
-In `perturbations_derivs`, the caio branch read:
+In `perturbations_derivs`, the DFA branch read:
 
 ```c
 lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
@@ -153,7 +153,7 @@ functions of the scale factor alone, yet all four were rebuilt for every mode at
 every right-hand-side evaluation, for the whole fluid phase. By comparison the CFA
 branch is just `ceff2_ncdm = ca2_ncdm`.
 
-Benchmarked in isolation, the caio expression costs **6.8 ns per call** against
+Benchmarked in isolation, the DFA expression costs **6.8 ns per call** against
 **0.87 ns** for the CFA one — two `pow`, two `sqrt` and one `exp` versus nothing.
 
 ### The fix
@@ -253,7 +253,7 @@ during an actual run and agreed to 12 significant figures.
 
 ## The same fix for the GBH fluid approximation
 
-`gbh_fluid_approximation = 3` (`gbh_fa_caio`) carries a structurally identical
+`gbh_fluid_approximation = 3` (`gbh_fa_DFA`) carries a structurally identical
 block in `perturbations_derivs`, and problem 2's identity applies to it verbatim:
 
 ```c
@@ -278,7 +278,7 @@ assuming.** Its counterpart of `P_{-1}` is `w_{-1}`, stored at
   approximation, so the background table layout does not depend on the method and
   the trap that forced the `compute_P_min1` flag does not arise here.
 
-There is a commented-out `//if (pba->gbh_fluid_approximation == gbh_fa_caio) {`
+There is a commented-out `//if (pba->gbh_fluid_approximation == gbh_fa_DFA) {`
 around the `w_{-1}` interpolation in `background.c`, evidently the GBH-side version
 of item 77. Leaving it disabled is the right call: gating it would save only a
 spline evaluation while making the table layout method-dependent, which is exactly

@@ -780,7 +780,7 @@ int perturbations_init(
   if (pba->has_ncdm == _TRUE_) {
 
     class_test ((ppr->ncdm_fluid_approximation < ncdmfa_mb) ||
-                (ppr->ncdm_fluid_approximation > ncdmfa_caio), /*ncdm_caio_fa*/
+                (ppr->ncdm_fluid_approximation > ncdmfa_DFA), /*ncdm_DFA_fa*/
                 ppt->error_message,
                 "your ncdm_fluid_approximation is set to %d, out of range defined in perturbations.h",ppr->ncdm_fluid_approximation);
 
@@ -795,7 +795,7 @@ int perturbations_init(
   if (pba->has_gbh == _TRUE_) {
 
     class_test ((ppr->gbh_fluid_approximation < gbh_fa_mb) ||
-                (ppr->gbh_fluid_approximation > gbh_fa_caio), 
+                (ppr->gbh_fluid_approximation > gbh_fa_DFA), 
                 ppt->error_message,
                 "your gbh_fluid_approximation is set to %d, out of range defined in perturbations.h",ppr->gbh_fluid_approximation);
 
@@ -4575,7 +4575,7 @@ int perturbations_vector_init(
         //     ppv->y[ppv->index_pt_theta_gbh] =
         //      ppw->pv->y[ppw->pv->index_pt_theta_gbh];
 
-        //     if(ppr->gbh_fluid_approximation != gbh_fa_caio)
+        //     if(ppr->gbh_fluid_approximation != gbh_fa_DFA)
         //      ppv->y[ppv->index_pt_sigma_gbh] =
         //        ppw->pv->y[ppw->pv->index_pt_sigma_gbh];           
         //   }
@@ -9661,7 +9661,7 @@ int perturbations_derivs(double tau,
   int index_q,n_ncdm,idx;
   double q,epsilon,dlnf0_dlnq,qk_div_epsilon;
   double rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm,w_ncdm,ca2_ncdm,ceff2_ncdm=0.,cvis2_ncdm=0.;
-  /*ncdm_caio_fa*/
+  /*ncdm_DFA_fa*/
   double lambda_ncdm,sigma_ncdm;
 
   /* for GBH species*/
@@ -10429,14 +10429,14 @@ int perturbations_derivs(double tau,
             cvis2_ncdm = 3.*w_ncdm*ca2_ncdm;
             sigma_ncdm = y[idx+2];
           }
-          /*ncdm_caio_fa*/
-          if (ppr->ncdm_fluid_approximation == ncdmfa_caio) {
+          /*ncdm_DFA_fa*/
+          if (ppr->ncdm_fluid_approximation == ncdmfa_DFA) {
             lambda_ncdm = pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
             c2_asp = (1. + w_ncdm) / (1. + lambda_ncdm) / 3.;
             /* Omega_m(a) = Omega0_m a^-3 (H0/H)^2 makes H cancel out of
                sqrt(3/2 Omega_m)*aH/sqrt(c_asp^2), leaving a constant (kfs_prefactor,
                set in background_solve) over sqrt(a*c_asp^2). This replaces two pow()
-               and one sqrt() per species per RHS evaluation. /ncdm_caio_fa/ */
+               and one sqrt() per species per RHS evaluation. /ncdm_DFA_fa/ */
             k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);
 
             cvis2_ncdm = 3.*w_ncdm*ca2_ncdm; 
@@ -10471,7 +10471,7 @@ int perturbations_derivs(double tau,
 
           }
 
-          if ((ppr->ncdm_fluid_approximation == ncdmfa_CLASS) || (ppr->ncdm_fluid_approximation == ncdmfa_caio)) {
+          if ((ppr->ncdm_fluid_approximation == ncdmfa_CLASS) || (ppr->ncdm_fluid_approximation == ncdmfa_DFA)) {
 
             dy[idx+2] = -3.0*(a_prime_over_a*(2./3.-ca2_ncdm-pseudo_p_ncdm/p_ncdm_bg/3.)+1./tau)*y[idx+2]
               +8.0/3.0*cvis2_ncdm/(1.0+w_ncdm)*s_l[2]*(y[idx+1]+metric_ufa_class);
@@ -10571,14 +10571,14 @@ int perturbations_derivs(double tau,
         cvis2_gbh = 3.*w_gbh*ca2_gbh;
         sigma_gbh=y[pv->index_pt_sigma_gbh[species_k]];
       }
-      if (ppr->gbh_fluid_approximation == gbh_fa_caio) {
+      if (ppr->gbh_fluid_approximation == gbh_fa_DFA) {
         lambda_gbh = pvecback[pba->index_bg_w_min1_gbh1+species_k]; /*w_{-1} of gbh species*/
         c2_asp = (1. + w_gbh) / (1. + lambda_gbh) / 3.;
         /* Omega_m(a) = Omega0_m a^-3 (H0/H)^2 makes H cancel out of
            sqrt(3/2 Omega_m)*aH/sqrt(c_asp^2), leaving a constant (kfs_prefactor,
            set in background_solve) over sqrt(a*c_asp^2). This replaces two pow()
            and one sqrt() per species per RHS evaluation. Same identity as the
-           ncdm caio branch above. //GBH_pt */
+           ncdm DFA branch above. //GBH_pt */
         k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);
 
         cvis2_gbh = 3.*w_gbh*ca2_gbh;
@@ -10611,7 +10611,7 @@ int perturbations_derivs(double tau,
 
       }
 
-      if ((ppr->gbh_fluid_approximation == gbh_fa_CLASS) || (ppr->gbh_fluid_approximation == gbh_fa_caio)) {
+      if ((ppr->gbh_fluid_approximation == gbh_fa_CLASS) || (ppr->gbh_fluid_approximation == gbh_fa_DFA)) {
 
         dy[pv->index_pt_sigma_gbh[species_k]] = -3.0*(a_prime_over_a*(2./3.-ca2_gbh-w2_gbh/w_gbh/3.)+1./tau)*y[pv->index_pt_sigma_gbh[species_k]]+8.0/3.0*cvis2_gbh/(1.0+w_gbh)*s_l[2]*(y[pv->index_pt_theta_gbh[species_k]]+metric_ufa_class);
 

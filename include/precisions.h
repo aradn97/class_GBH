@@ -413,7 +413,7 @@ class_precision_parameter(ur_fluid_approximation,int,ufa_CLASS) /**< method for 
  */
 class_precision_parameter(ur_fluid_trigger_tau_over_tau_k,double,30.0)
 class_precision_parameter(ncdm_fluid_approximation,int,ncdmfa_CLASS) /**< method for non-cold dark matter fluid approximation */
-class_precision_parameter(gbh_fluid_approximation,int,gbh_fa_caio) /**< default method for non-cold dark matter fluid approximation, used in gbh */ //GBH_pt
+class_precision_parameter(gbh_fluid_approximation,int,gbh_fa_DFA) /**< default method for non-cold dark matter fluid approximation, used in gbh */ //GBH_pt
 class_precision_parameter(gbh_FA_trigger,double,15.)   /**< the upper bound for x=kT up to which we use gbh, after which we use fluid approximation */
 
 /**

@@ -1403,7 +1403,7 @@ int input_try_unknown_parameters(double * unknown_parameter,
     if (input_verbose>2)
       printf("Stage 1: background\n");
     ba.background_verbose = 0;
-    /*ncdm_caio_fa*/
+    /*ncdm_DFA_fa*/
     /* P_{-1} is read in exactly one place -- the ncdm dispersive fluid
        approximation in perturbations_derivs -- which a shooting trial never
        reaches, since the trial stops at cs_background or cs_thermodynamics.
@@ -2734,7 +2734,7 @@ int input_read_parameters_species(struct file_content * pfc,
                                            NULL,
                                            NULL,
                                            NULL,
-                                           NULL), /*ncdm_caio_fa*/
+                                           NULL), /*ncdm_DFA_fa*/
                    pba->error_message,
                    errmsg);
         if (pba->Omega0_ncdm[n] == 0.0){
@@ -2759,8 +2759,8 @@ int input_read_parameters_species(struct file_content * pfc,
       pba->Omega0_ncdm_tot += pba->Omega0_ncdm[n];
     }
 
-    pba->ncdm_fluid_approximation = ppr->ncdm_fluid_approximation; // this is added to bg structure to avoid calculating P_{-1} when FA is not caio. /*ncdm_caio_fa*/
-    pba->compute_P_min1 = _TRUE_; /*ncdm_caio_fa*/ /* overridden only for shooting trials */
+    pba->ncdm_fluid_approximation = ppr->ncdm_fluid_approximation; // this is added to bg structure to avoid calculating P_{-1} when FA is not DFA. /*ncdm_DFA_fa*/
+    pba->compute_P_min1 = _TRUE_; /*ncdm_DFA_fa*/ /* overridden only for shooting trials */
 
   }
   class_test(pba->Omega0_ncdm_tot<0,errmsg,"You cannot set the NCDM density to negative values.");
@@ -2898,7 +2898,7 @@ int input_read_parameters_species(struct file_content * pfc,
     // we need this in background struc solely because in background_free_input we don't have access to ppr.
     pba->gbh_init_condition_integrate = ppr->gbh_init_condition_integrate; 
     // we need this in background struc because in background_functions we don't have access to ppr.
-    pba->gbh_fluid_approximation = ppr->gbh_fluid_approximation; // this is added to bg structure to avoid calculating P_{-1} when FA is not caio. /*ncdm_caio_fa*/
+    pba->gbh_fluid_approximation = ppr->gbh_fluid_approximation; // this is added to bg structure to avoid calculating P_{-1} when FA is not DFA. /*ncdm_DFA_fa*/
     
     /* This function computes the second derivatives of w_n's at given x values, preparing it for spline in background_functions. 
     It also finds pba->n_max_gbh_table.
@@ -6083,7 +6083,7 @@ int input_default_params(struct background *pba,
   pba->deg_ncdm = NULL;
   /** 5.h) ncdm FA method */
   pba->ncdm_fluid_approximation = ncdmfa_CLASS; 
-  pba->compute_P_min1 = _TRUE_; /*ncdm_caio_fa*/
+  pba->compute_P_min1 = _TRUE_; /*ncdm_DFA_fa*/
   /** 5.i) --> See read_parameters_background */
 
 
@@ -6115,7 +6115,7 @@ int input_default_params(struct background *pba,
   pba->n_max_gbh = 20;
   pba->n_max_gbh_table = 31;  //starts from 1
   pba->Omega0_gbh = 0.0;
-  pba->gbh_fluid_approximation = gbh_fa_caio; 
+  pba->gbh_fluid_approximation = gbh_fa_DFA; 
   /*GBH_bg_end*/
 
   /** 6) Curvature density */

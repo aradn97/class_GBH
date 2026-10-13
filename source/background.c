@@ -113,7 +113,7 @@
  */
 
 #include "background.h"
-#include "perturbations.h" //because we need ncdmfa_caio
+#include "perturbations.h" //because we need ncdmfa_DFA
 
 /**
  * Background quantities at given redshift z.
@@ -394,7 +394,7 @@ int background_functions(
   /* background gbh quantities */
   double rho_gbh,p_gbh,P_min1; //GBH_bg
   /* background ncdm quantities */
-  double rho_ncdm,p_ncdm,pseudo_p_ncdm,p_min1_ncdm; /*ncdm_caio_fa*/
+  double rho_ncdm,p_ncdm,pseudo_p_ncdm,p_min1_ncdm; /*ncdm_DFA_fa*/
   /* index for n_ncdm species */
   int n_ncdm;
   /* index for gbh hierarchy */
@@ -521,7 +521,7 @@ int background_functions(
                                          &p_ncdm,
                                          NULL,
                                          &pseudo_p_ncdm,
-                                         ((pba->ncdm_fluid_approximation == ncdmfa_caio) && (pba->compute_P_min1 == _TRUE_)) ? &p_min1_ncdm : NULL), /*ncdm_caio_fa*/
+                                         ((pba->ncdm_fluid_approximation == ncdmfa_DFA) && (pba->compute_P_min1 == _TRUE_)) ? &p_min1_ncdm : NULL), /*ncdm_DFA_fa*/
                  pba->error_message,
                  pba->error_message);
 
@@ -531,10 +531,10 @@ int background_functions(
       rho_tot += rho_ncdm;
       pvecback[pba->index_bg_p_ncdm1+n_ncdm] = p_ncdm;
       p_tot += p_ncdm;
-      if (pba->ncdm_fluid_approximation == ncdmfa_caio){
-        /* The index is defined whenever the FA is caio, so the column exists either
+      if (pba->ncdm_fluid_approximation == ncdmfa_DFA){
+        /* The index is defined whenever the FA is DFA, so the column exists either
            way; when compute_P_min1 is _FALSE_ (shooting trials) we store zero rather
-           than leaving it uninitialised for the spline. /ncdm_caio_fa/ */
+           than leaving it uninitialised for the spline. /ncdm_DFA_fa/ */
         pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] =
           (pba->compute_P_min1 == _TRUE_) ? p_min1_ncdm : 0.;
       }
@@ -585,7 +585,7 @@ int background_functions(
       interpolated_rho = interpolated_integral * pba->deg_gbh[species_k] * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
       pvecback[pba->index_bg_rho_gbh1+species_k] = interpolated_rho;
 
-      //if (pba->gbh_fluid_approximation == gbh_fa_caio) {
+      //if (pba->gbh_fluid_approximation == gbh_fa_DFA) {
         // Interpolate `w_{-1}` for GBH from the saved array of pre-computed values
         if(current_x_value<=pba->x_gbh_bg[pba->x_size_gbh_bg-1])
         {
@@ -1253,8 +1253,8 @@ int background_indices(
   /* - indices for ncdm. We only define the indices for ncdm1
      (density, pressure, pseudo-pressure), the other ncdm indices
      are contiguous */
-  if (pba->ncdm_fluid_approximation == ncdmfa_caio){
-    class_define_index(pba->index_bg_P_min1_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_caio_fa*/
+  if (pba->ncdm_fluid_approximation == ncdmfa_DFA){
+    class_define_index(pba->index_bg_P_min1_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm); /*ncdm_DFA_fa*/
   }
   class_define_index(pba->index_bg_rho_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
   class_define_index(pba->index_bg_p_ncdm1,pba->has_ncdm,index_bg,pba->N_ncdm);
@@ -2261,7 +2261,7 @@ int background_ncdm_momenta(
                             double * p,   // pressure
                             double * drho_dM,  // d rho / d M used in next function
                             double * pseudo_p,  // pseudo-p used in ncdm fluid approx
-                            double * p_min1     // P_{-1} used in ncdm Caio fluid approx /*ncdm_caio_fa*/
+                            double * p_min1     // P_{-1} used in ncdm DFA /*ncdm_DFA_fa*/
                             ) {
 
   int index_q;
@@ -2279,7 +2279,7 @@ int background_ncdm_momenta(
   if (p!=NULL) *p = 0.;
   if (drho_dM!=NULL) *drho_dM = 0.;
   if (pseudo_p!=NULL) *pseudo_p = 0.;
-  if (p_min1!=NULL) *p_min1 = 0.; /*ncdm_caio_fa*/
+  if (p_min1!=NULL) *p_min1 = 0.; /*ncdm_DFA_fa*/
 
   /** - loop over momenta */
   for (index_q=0; index_q<qsize; index_q++) {
@@ -2296,7 +2296,7 @@ int background_ncdm_momenta(
     if (p!=NULL) *p += q2*q2/3./epsilon*wvec[index_q];
     if (drho_dM!=NULL) *drho_dM += q2*M/(1.+z)/(1.+z)/epsilon*wvec[index_q];
     if (pseudo_p!=NULL) *pseudo_p += pow(q2/epsilon,3)/3.0*wvec[index_q];
-    if (p_min1!=NULL) *p_min1 += pow(epsilon,3.)/3.*wvec[index_q]; /*ncdm_caio_fa*/
+    if (p_min1!=NULL) *p_min1 += pow(epsilon,3.)/3.*wvec[index_q]; /*ncdm_DFA_fa*/
   }
 
   /** - adjust normalization */
@@ -2305,7 +2305,7 @@ int background_ncdm_momenta(
   if (p!=NULL) *p *= factor2;
   if (drho_dM!=NULL) *drho_dM *= factor2;
   if (pseudo_p!=NULL) *pseudo_p *=factor2;
-  if (p_min1!=NULL) *p_min1 *=factor2; /*ncdm_caio_fa*/
+  if (p_min1!=NULL) *p_min1 *=factor2; /*ncdm_DFA_fa*/
 
   return _SUCCESS_;
 }
@@ -2342,7 +2342,7 @@ int background_ncdm_M_from_Omega(
                           NULL,
                           NULL,
                           NULL,
-                          NULL); /*ncdm_caio_fa*/
+                          NULL); /*ncdm_DFA_fa*/
 
   /* Is the value of Omega less than a massless species?*/
   class_test(rho0<rho,pba->error_message,
@@ -2365,7 +2365,7 @@ int background_ncdm_M_from_Omega(
                             NULL,
                             &drhodM,
                             NULL,
-                            NULL); /*ncdm_caio_fa*/
+                            NULL); /*ncdm_DFA_fa*/
 
     deltaM = (rho0-rho)/drhodM; /* By definition of the derivative */
     if ((M+deltaM)<0.0) deltaM = -M/2.0; /* Avoid overshooting to negative M value. */
@@ -2489,7 +2489,7 @@ int background_checks(
                                 NULL,
                                 NULL,
                                 NULL,
-                                NULL); /*ncdm_caio_fa*/
+                                NULL); /*ncdm_DFA_fa*/
 
         /* inform user of the contribution of each species to
            radiation density (in relativistic limit): should be
@@ -2775,7 +2775,7 @@ int background_solve(
 
   /**  - store information in the background structure */
   pba->Omega0_m = pba->background_table[(pba->bt_size-1)*pba->bg_size+pba->index_bg_Omega_m];
-  /*ncdm_caio_fa*/
+  /*ncdm_DFA_fa*/
   /* Constant part of the DFA free-streaming scale. Must be set here, not in
      background_functions: Omega0_m is only known once the table above is complete. */
   pba->kfs_prefactor = sqrt(1.5*pba->Omega0_m)*pba->H0;
@@ -2868,7 +2868,7 @@ int background_initial_conditions(
                                             &p_ncdm,
                                             NULL,
                                             NULL,
-                                            NULL), /*ncdm_caio_fa*/
+                                            NULL), /*ncdm_DFA_fa*/
                     pba->error_message,
                     pba->error_message);
           rho_ncdm_rel_tot += 3.*p_ncdm;

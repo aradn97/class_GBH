@@ -62,7 +62,7 @@ Flags used for implementing the Generalized Boltzmann Hierarchy are explained he
     The files include:
         background.c    background.h
 
-3) /*ncdm_caio_fa*/ determines the places where Caio's FA affects ncdm code.
+3) /*ncdm_DFA_fa*/ determines the places where the DFA affects ncdm code.
 
 
 
@@ -81,38 +81,38 @@ Flags used for implementing the Generalized Boltzmann Hierarchy are explained he
 TODO:
 Notes of caution during coding.
 
-1. pba->has_gbh has been added. make sure to turn it on in all required circumstances
-2. the above requires Omega0_gbh to be non-zero. introduce it properly.
+DONE 1. pba->has_gbh has been added. make sure to turn it on in all required circumstances
+DONE 2. the above requires Omega0_gbh to be non-zero. introduce it properly.
 DONE 3. fix the initial condition for rho at background
-4. Be careful with the order of background columns in saved file
-5. make sure that all gbh codes are within the condition if has_gbh=true.
+DONE 4. Be careful with the order of background columns in saved file
+DONE 5. make sure that all gbh codes are within the condition if has_gbh=true.
 DONE 6. the condition if (pba->gbh_use_table == 1) in parsing the table address must be after pba->gbh_use_table is assigned. double check.
-7. consider removing struct background_gbh_tabulated_w {} as a separate structure
+DONE 7. consider removing struct background_gbh_tabulated_w {} as a separate structure
 DONE 8. put default value for pba->n_max_gbh
-9. make sure all computations are within pba->has_gbh condition
-10. put a check for n_max_gbh comparing to the file
-11. implement pba->M_gbh and x=ma/T0 in background_functions
+DONE 9. make sure all computations are within pba->has_gbh condition
+DONE 10. put a check for n_max_gbh comparing to the file
+DONE 11. implement pba->M_gbh and x=ma/T0 in background_functions
 DONE 12. T_gbh is once used in rho_ini and once in background_functions. check consistency
 DONE 13. Do we need shooting for rho0_gbh? maybe use the quadrature in ncdm once at the start...
-14. Initialization of last_index_gbh might be wrong
+DONE 14. Initialization of last_index_gbh might be wrong
 DONE 15. Does parser_read_list_of_strings automatically allocate memory to pba->gbh_table_address?
 DONE (not necessary) 16. Consider adding a second pba->gbh_use_table just for rho.
 DONE 17. for x>100 find rho
 DONE 18. be careful with units of rho
 DONE (input_read_parameters_species now has a class_test rejecting m_gbh_in_eV[n]<=0 for every species; an omitted `m_gbh` falls back to the 0.0 default and is caught by the same test) 19. In input.c, put some error condition if m_gbh is not given
-20. why do we have ppr->gbh_use_table?
-21. is x<1.e-3 handled correctly for rho?
-22. is x<1.e-3 handled correctly for w_n's?
-23. I'm introducing x=0 by hand. will the interpolation between that and x<1.e-3 give sensible results?
-24. for gbh section in initial_conditions function, why don't you use the interpolation of the table that's being done in background_functions?
+DONE 20. why do we have ppr->gbh_use_table?
+DONE 21. is x<1.e-3 handled correctly for rho?
+DONE 22. is x<1.e-3 handled correctly for w_n's?
+DONE 23. I'm introducing x=0 by hand. will the interpolation between that and x<1.e-3 give sensible results?
+DONE 24. for gbh section in initial_conditions function, why don't you use the interpolation of the table that's being done in background_functions?
 DONE 25. I'm adding has_gbh_pt to be able to turn-off perturbations from input file. later remove it and replace it with has_gbh.
-26. define ppv->index_pt_delta_gbh,ppv->index_pt_Delta_gbh,ppv->n_max_gbh,ppw->index_gbh_fa in perturbations.h file and ppr->n_max_gbh in precisions.h. make sure ppv->n_max_gbh>1 so that we have the pressure density
+DONE 26. define ppv->index_pt_delta_gbh,ppv->index_pt_Delta_gbh,ppv->n_max_gbh,ppw->index_gbh_fa in perturbations.h file and ppr->n_max_gbh in precisions.h. make sure ppv->n_max_gbh>1 so that we have the pressure density
 DONE (obsolete note) 27. For the moment, for each k, I either use GBH at every tau or not at all. The case of switching to FA during evolution should be discussed later.
 DONE 28. double check with Caio that the x column is the same for the two tables.
 DONE (equation-by-equation check against the two GBH papers confirms the n_max*l_max sizing, i.e. n=0...n_max-1, is correct as-is; no (n+1) needed) 29. dimension of Sigma_gbh is (ppv->n_max_gbh)*(ppv->l_max_gbh). dont we want (n+1)l?
 DONE (because it directly enters in the equation for sigma') 30. Why isn't this zero in the initial conditions? l3_ur = ktau_three*2./7./(12.*fracnu+45.)* ppr->curvature_ini;
 31. Maybe implement the FA at very low k, x<1?
-32. I'm using p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1]; in perturbations. what if n_max is chosen to be 1?
+DONE 32. I'm using p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1]; in perturbations. what if n_max is chosen to be 1?
 33. NOTE: we are using cg2_gbh = w_gbh*(1.0-1.0/(3.0+3.0*w_gbh)*(3.0*w_gbh-2.0+pseudo_p_gbh/p_gbh));
         ppw->delta_p += cg2_gbh*rho_gbh*delta_gbh;  as the pressure contribution in fluid approximation (x>30).
 34. Why is class adding all of the ncdm energy density to delta_rho_m? what if it's relativistic?
@@ -128,9 +128,9 @@ DONE 36. add has_source_delta_gbh, ppt->index_tp_delta_gbh (and for theta) every
 DONE 39. sync gauge eqs?
 DONE 40. be careful that n_max at perturbations doesn't exceed n_max of tables. we need at least pv->l_max_gbh+pv->n_max_gbh+1 columns of w
 DONE (cause we have no high-precision setting) 41. We have no analogue for ncdmfa_none
-42. We don't have class_define_index(ppt->index_tp_delta_gbh,   ppt->has_source_delta_gbh,  index_type,1); why
+DONE 42. We don't have class_define_index(ppt->index_tp_delta_gbh,   ppt->has_source_delta_gbh,  index_type,1); why
 43. make sure in precision.h, evolver is ndf15
-44. if you change the definition of Omega_m in neutrino horizon, change both k_fs_gbh def in perturbations and horizon_gbh in background (the latter is integrated)
+DONE 44. if you change the definition of Omega_m in neutrino horizon, change both k_fs_gbh def in perturbations and horizon_gbh in background (the latter is integrated)
 DONE 45. Resolve the ***Pending*** issues in perturbations.c
 DONE (discussed with Caio: Omega_m~Omega0_m/a^3(H0/H)^2) 46. in dy[pba->index_bi_horizon_gbh] = 2. * _PI_ * c_asp / (a * H * sqrt(3. / 2. * pvecback[pba->index_bg_Omega_M])); I'm using index_bg_Omega_M which includes relativistic neutrinos as well as non-relativistic. If we use index_bg_Omega_m we get zero in the denominator.
 Also Omega_m = pvecback[pba->index_bg_Omega_M]; in perturbations.
@@ -138,7 +138,7 @@ Also Omega_m = pvecback[pba->index_bg_Omega_M]; in perturbations.
 DONE 48. use only one 0.71611. now you're using it both in input and background modules
 DONE 49. use quadrature rho_gbh at initial condition
 DONE 50. remove rho_M as the matter density that includes neutrinos even if non-rel
-51. for(n=0;n<N;n++)
+DONE 51. for(n=0;n<N;n++)
           {
             w[n] = pvecback[pba->index_bg_P_gbh+n]/pvecback[pba->index_bg_P_gbh]/3.;
           }
@@ -151,19 +151,19 @@ DONE 52. I had made the deadly mistake of defining ppv->n_max_gbh = 16;
       This was giving huge memory issues.
 
 DONE 53. free streaming scale at the moment does not include Omega_m. Fix it.
-54. Don't get other inputs for gbh if N_gbh=0. put a condition in input.c
+DONE 54. Don't get other inputs for gbh if N_gbh=0. put a condition in input.c
 DONE 55. remove index_bg_lambda_gbh and index_bg_Pminus1_gbh. They are not used in perturbations.c.
 56. extra stuff I've ordered to print: //GBH_pt_print. You can remove them at the end.
 DONE 57. if the code is slow, look at the perturbations initial condition for gbh, where I integrate in momentum space. find a way to speed it up.
-58. For the case pba->gbh_use_table == 1, also provide a table for P_{-1}, so we wouldnt need quadrature in the background
+DONE 58. For the case pba->gbh_use_table == 1, also provide a table for P_{-1}, so we wouldnt need quadrature in the background
 DONE 59. change 1000. in interpolation (both in input.c and background.c) to some precision parameter, that also needs to be input together with the file
 DONE 60. for sync gauge, change FA
 DONE 61. for sync gauge, change trunc scheme
 DONE 62. for sync gauge, change init conditions
-63. check whether in presence of fld, caio fluid approximation with sync gauge still works fine (finds correct sigma_ncdm or gbh)
+63. check whether in presence of fld, DFA with sync gauge still works fine (finds correct sigma_ncdm or gbh)
 DONE 64. no need to even compute quadrature weights if gbh_init_condition_integrate is FALSE.
 DONE 65. save w_n's instead of P_n's?
-66. make sure you don't redundantly read precision parameters in input.c
+DONE 66. make sure you don't redundantly read precision parameters in input.c
 67. remove n_max_gbh as an input parameter if use_table is 1. It should be computed based on what we need for perturbations.
 Warn in the paper or to the user how large the table needs to be
 68. remove ppr->gbh_truncation_scheme==1 (the 'conservative' scheme)
@@ -172,11 +172,11 @@ DONE 70. set the default in input.c to pba->gbh_use_table = 1, and put the table
 DONE 71. move w_n table to external
 DONE 72. do not hard code 1000 as the max x value of files
 73. Remove the computation of gbh pert init conditions by quadrature.
-DONE 74. ncdm caio FA: update, removing the explicit shear formula--> then remove index_bg_horizon_ncdm1 from background as well
-DONE 75. remove extra precision params use_formula and gbh_FA_caio_transition_rate
+DONE 74. ncdm DFA: update, removing the explicit shear formula--> then remove index_bg_horizon_ncdm1 from background as well
+DONE 75. remove extra precision params use_formula and gbh_FA_DFA_transition_rate
 76. /** - --> TODO: gauge transformation of delta, deltaP/rho (?) and theta using -= 3aH(1+w_ncdm) alpha for delta. */
 this is now done for ncdm. do it for gbh
-77. compute w_-1 at background only if gbh_fa is caio.
+DONE 77. compute w_-1 at background only if gbh_fa is DFA.
 DONE 78. dont call class_call(background_ncdm_momenta(pba->q_gbh_bg, ...)) in the initial condition checker of background for gbh.
 79. OPEN (not fixed this round -- documenting only): evolver=1 (ndf15) produces silently unphysical
     GBH results (sigma8 off by many orders of magnitude, d_gbh(k) blown up to ~1e16 for some k) for
@@ -302,7 +302,7 @@ DONE 82. Applied item 81's k_fs simplification to the gbh fluid approximation
     interpolation of a precomputed table under the default gbh_use_table=1 (and one extra term in
     a loop that already runs under gbh_use_table=0), and index_bg_w_min1_gbh1 is defined on
     has_gbh rather than on the FA method, so the table layout does not depend on the method. The
-    commented-out //if (pba->gbh_fluid_approximation == gbh_fa_caio) around that interpolation in
+    commented-out //if (pba->gbh_fluid_approximation == gbh_fa_DFA) around that interpolation in
     background.c should stay commented out for that reason. Microbenchmark: 5.92 -> 0.54 ns per
     call for the k_fs expression; the end-to-end saving was below the noise floor on the test
     machine and still needs measuring.
