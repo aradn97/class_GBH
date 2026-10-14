@@ -2879,10 +2879,11 @@ int background_initial_conditions(
           }
         }
       }
-      // now check GBH species
+      // now check GBH species, all of them: any one still non-relativistic means we must start earlier
       if (is_early_enough == _TRUE_ && pba->has_gbh == _TRUE_){
+       for (species_k=0; (species_k<pba->N_gbh) && (is_early_enough == _TRUE_); species_k++){
         if(pba->gbh_use_table==_TRUE_){
-          current_x_value = pba->M_gbh[0] * a;
+          current_x_value = pba->M_gbh[species_k] * a;
           // Interpolate `w1` for GBH from the saved array of pre-computed values
           if(current_x_value<=pba->x_gbh_bg[pba->x_size_gbh_bg-1])
           {
@@ -2914,7 +2915,7 @@ int background_initial_conditions(
                                             1, //we want interpolation for 1 column only
                                             pba->error_message),
                   pba->error_message, pba->error_message);
-              rho_gbh = interpolated_rho * pba->deg_gbh[0] * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
+              rho_gbh = interpolated_rho * pba->deg_gbh[species_k] * 15. / pow(_PI_,2) * pow(pba->T0_gbh,4.) * pba->Omega0_g * pow(pba->H0,2)/pow(a,4); //the table of rho in fact contains the normalization rho/T^4, so you should multiply by T^4 to get rho. // using pow(pba->T0_gbh,4.) instead of pow(4./11.,4./3.)
               p_gbh = rho_gbh * w1;
               rho_ncdm_rel_tot += 3.*p_gbh; 
             }
@@ -2928,8 +2929,8 @@ int background_initial_conditions(
           class_call(background_gbh_momenta(pba->q_gbh_bg,
                                             pba->weights_gbh_bg,
                                             pba->q_size_gbh_bg,
-                                            pba->M_gbh[0],
-                                            pba->factor_gbh[0],
+                                            pba->M_gbh[species_k],
+                                            pba->factor_gbh[species_k],
                                             1./a-1.0,
                                             NULL, // no need for number density
                                             &rho_gbh,
@@ -2944,6 +2945,7 @@ int background_initial_conditions(
             is_early_enough = _FALSE_;
           }
         }
+       }
       }
 
 
