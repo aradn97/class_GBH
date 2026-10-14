@@ -7348,14 +7348,17 @@ int perturbations_einstein(
       /* second equation involving total velocity */
       ppw->pvecmetric[ppw->index_mt_eta_prime] = (1.5 * a2 * ppw->rho_plus_p_theta + 0.5 * pba->K * ppw->pvecmetric[ppw->index_mt_h_prime])/k2/s2_squared;  /* eta' */
 
+      /* alpha = (h'+6eta')/2k^2 */
+      ppw->pvecmetric[ppw->index_mt_alpha] = (ppw->pvecmetric[ppw->index_mt_h_prime] + 6.*ppw->pvecmetric[ppw->index_mt_eta_prime])/2./k2;
+
+      /* DFA species: add the alpha-dependent part of delta_p, now that alpha is known */
+      ppw->delta_p += ppw->delta_p_alpha_coeff*ppw->pvecmetric[ppw->index_mt_alpha];
+
       /* third equation involving total pressure */
       ppw->pvecmetric[ppw->index_mt_h_prime_prime] =
         - 2. * a_prime_over_a * ppw->pvecmetric[ppw->index_mt_h_prime]
         + 2. * k2 * s2_squared * y[ppw->pv->index_pt_eta]
         - 9. * a2 * ppw->delta_p;
-
-      /* alpha = (h'+6eta')/2k^2 */
-      ppw->pvecmetric[ppw->index_mt_alpha] = (ppw->pvecmetric[ppw->index_mt_h_prime] + 6.*ppw->pvecmetric[ppw->index_mt_eta_prime])/2./k2;
 
       /* eventually, infer first-order tight-coupling approximation for photon
          shear, then correct the total shear */
@@ -7501,7 +7504,8 @@ int perturbations_total_stress_energy(
   double epsilon,q,q2,cg2_ncdm,w_ncdm,rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm;
   double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,ca2_gbh,cg2_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
   double ceff2_gbh,lambda_gbh,c2_asp,k_fs; //GBH_pt
-  double ceff2_ncdm,lambda_ncdm; /*ncdm_DFA_fa*/
+  double ceff2_ncdm,lambda_ncdm,dp_over_rho_ncdm; /*ncdm_DFA_fa*/
+  double dp_over_rho_gbh; //GBH_pt
   int species_k; //GBH_pt
   double w_fld,dw_over_da_fld,integral_fld;
   double gwncdm;
@@ -7651,6 +7655,7 @@ int perturbations_total_stress_energy(
     ppw->rho_plus_p_shear = 4./3.*ppw->pvecback[pba->index_bg_rho_g]*shear_g; // contribution to total perturbed stress-energy
     ppw->delta_p = 1./3.*ppw->pvecback[pba->index_bg_rho_g]*delta_g
       + ppw->pvecback[pba->index_bg_rho_b]*delta_p_b_over_rho_b; // contribution to total perturbed stress-energy
+    ppw->delta_p_alpha_coeff = 0.;
     ppw->rho_plus_p_tot = 4./3. * ppw->pvecback[pba->index_bg_rho_g] + ppw->pvecback[pba->index_bg_rho_b];
 
     if (ppt->has_source_delta_m == _TRUE_) {
@@ -7794,7 +7799,13 @@ int perturbations_total_stress_energy(
             k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);
             ceff2_ncdm = cg2_ncdm + (c2_asp - cg2_ncdm) * exp(-4. / 3. * k_fs / k);
           }
-          ppw->delta_p += ceff2_ncdm*rho_ncdm_bg*y[idx];
+          dp_over_rho_ncdm = ceff2_ncdm*y[idx]; /* delta p / rho */
+          if ((ppr->ncdm_fluid_approximation == ncdmfa_DFA) && (ppt->gauge == synchronous)) {
+            /* synchronous gauge: delta p/rho also gets alpha (c_eff^2 - c_g^2) rho'/rho, with rho'/rho = -3 aH (1+w).
+               alpha is not known yet here, so only its coefficient is collected; perturbations_einstein adds it /ncdm_DFA_fa/ */
+            ppw->delta_p_alpha_coeff += rho_ncdm_bg*(ceff2_ncdm-cg2_ncdm)*(-3.*a_prime_over_a*(1.+w_ncdm));
+          }
+          ppw->delta_p += rho_ncdm_bg*dp_over_rho_ncdm;
 
           ppw->rho_plus_p_tot += rho_plus_p_ncdm;
 
@@ -7887,7 +7898,13 @@ int perturbations_total_stress_energy(
         else{
           ceff2_gbh = cg2_gbh;
         }
-        ppw->delta_p += ceff2_gbh*rho_gbh*delta_gbh; //GBH_backreaction
+        dp_over_rho_gbh = ceff2_gbh*delta_gbh; /* delta p / rho */
+        if ((ppr->gbh_fluid_approximation == gbh_fa_DFA) && (ppt->gauge == synchronous)) {
+          /* synchronous gauge: delta p/rho also gets alpha (c_eff^2 - c_g^2) rho'/rho, with rho'/rho = -3 aH (1+w).
+             alpha is not known yet here, so only its coefficient is collected; perturbations_einstein adds it //GBH_pt */
+          ppw->delta_p_alpha_coeff += rho_gbh*(ceff2_gbh-cg2_gbh)*(-3.*a_prime_over_a*(1.+w_gbh));
+        }
+        ppw->delta_p += rho_gbh*dp_over_rho_gbh; //GBH_backreaction
       }
       else{
         delta_gbh = 3.*y[ppw->pv->index_pt_Delta_gbh[species_k]];
@@ -8034,7 +8051,7 @@ int perturbations_total_stress_energy(
         Z_prime = Z*(ppw->pvecback[pba->index_bg_H_prime]/ppw->pvecback[pba->index_bg_H] - a_prime_over_a);
         /** Construct theta_t and its derivative from the Euler equation */
         theta_t = ppw->rho_plus_p_theta/ppw->rho_plus_p_tot;
-        theta_t_prime = -a_prime_over_a*theta_t-(p_t_prime*theta_t-k2*ppw->delta_p +k2*ppw->rho_plus_p_shear)/ppw->rho_plus_p_tot+metric_euler;
+        theta_t_prime = -a_prime_over_a*theta_t-(p_t_prime*theta_t-k2*(ppw->delta_p+ppw->delta_p_alpha_coeff*alpha) +k2*ppw->rho_plus_p_shear)/ppw->rho_plus_p_tot+metric_euler;
         S = ppw->S_fld;
         S_prime = -Z_prime/Z*S+1./Z*(rho_fld_prime+p_fld_prime)*(theta_t+k2*alpha)+1./Z*(rho_fld+p_fld)*(theta_t_prime+k2*alpha_prime);
         /** Analytic derivative of the equation for ppw->rho_plus_p_theta_fld above. */
@@ -9682,13 +9699,13 @@ int perturbations_derivs(double tau,
   /* for use with non-cold dark matter (ncdm): */
   int index_q,n_ncdm,idx;
   double q,epsilon,dlnf0_dlnq,qk_div_epsilon;
-  double rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm,w_ncdm,ca2_ncdm,ceff2_ncdm=0.,cvis2_ncdm=0.;
+  double rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm,w_ncdm,ca2_ncdm,ceff2_ncdm=0.,cvis2_ncdm=0.,dp_over_rho_ncdm;
   /*ncdm_DFA_fa*/
   double lambda_ncdm,sigma_ncdm;
 
   /* for GBH species*/
   /*GBH_pt_start*/ 
-  double w_gbh,w2_gbh,rho_gbh,ca2_gbh,c2_asp,k_fs,ceff2_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,delta_l2=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.;
+  double w_gbh,w2_gbh,rho_gbh,ca2_gbh,c2_asp,k_fs,ceff2_gbh,dp_over_rho_gbh,cvis2_gbh,delta_next=0.,delta_l1=0.,delta_l2=0.,sigma_ns=0.,sigma_np=0.,sigma_sn=0.;
   double lambda_gbh,sigma_gbh;
   int species_k; //GBH_pt
   /*GBH_pt_end*/
@@ -10466,15 +10483,25 @@ int perturbations_derivs(double tau,
             sigma_ncdm=y[idx+2];
           }
 
+          /** - -----> pressure perturbation delta p / rho */
+
+          dp_over_rho_ncdm = ceff2_ncdm*y[idx];
+          if ((ppr->ncdm_fluid_approximation == ncdmfa_DFA) && (ppt->gauge == synchronous)) {
+            /* c_eff^2 is the Newtonian-gauge closure, so in synchronous gauge
+               delta p/rho = c_eff^2 delta + alpha (c_eff^2 - c_g^2) rho'/rho,
+               with rho'/rho = -3 aH (1+w) and alpha = (h'+6eta')/2k^2 /ncdm_DFA_fa/ */
+            dp_over_rho_ncdm += pvecmetric[ppw->index_mt_alpha]*(ceff2_ncdm-ca2_ncdm)*(-3.*a_prime_over_a*(1.+w_ncdm));
+          }
+
           /** - -----> exact continuity equation */
 
           dy[idx] = -(1.0+w_ncdm)*(y[idx+1]+metric_continuity)-
-            3.0*a_prime_over_a*(ceff2_ncdm-w_ncdm)*y[idx];
+            3.0*a_prime_over_a*(dp_over_rho_ncdm-w_ncdm*y[idx]);
 
           /** - -----> exact euler equation */
 
           dy[idx+1] = -a_prime_over_a*(1.0-3.0*ca2_ncdm)*y[idx+1]+
-            ceff2_ncdm/(1.0+w_ncdm)*k2*y[idx]-k2*sigma_ncdm
+            k2*dp_over_rho_ncdm/(1.0+w_ncdm)-k2*sigma_ncdm
             + metric_euler;
 
           /** - -----> different ansatz for approximate shear derivative */
@@ -10608,16 +10635,26 @@ int perturbations_derivs(double tau,
         sigma_gbh=y[pv->index_pt_sigma_gbh[species_k]];
       }
 
+      /** - -----> pressure perturbation delta p / rho */
+
+      dp_over_rho_gbh = ceff2_gbh*y[pv->index_pt_delta_gbh[species_k]];
+      if ((ppr->gbh_fluid_approximation == gbh_fa_DFA) && (ppt->gauge == synchronous)) {
+        /* c_eff^2 is the Newtonian-gauge closure, so in synchronous gauge
+           delta p/rho = c_eff^2 delta + alpha (c_eff^2 - c_g^2) rho'/rho,
+           with rho'/rho = -3 aH (1+w) and alpha = (h'+6eta')/2k^2 //GBH_pt */
+        dp_over_rho_gbh += pvecmetric[ppw->index_mt_alpha]*(ceff2_gbh-ca2_gbh)*(-3.*a_prime_over_a*(1.+w_gbh));
+      }
+
       /** - -----> exact continuity equation */
 
-      dy[pv->index_pt_delta_gbh[species_k]] = -(1.0+w_gbh)*(y[pv->index_pt_theta_gbh[species_k]]+metric_continuity)-3.0*a_prime_over_a*(ceff2_gbh-w_gbh)*y[pv->index_pt_delta_gbh[species_k]];
+      dy[pv->index_pt_delta_gbh[species_k]] = -(1.0+w_gbh)*(y[pv->index_pt_theta_gbh[species_k]]+metric_continuity)-3.0*a_prime_over_a*(dp_over_rho_gbh-w_gbh*y[pv->index_pt_delta_gbh[species_k]]);
 
 
 
 
       /** - -----> exact euler equation */
 
-      dy[pv->index_pt_theta_gbh[species_k]] = -a_prime_over_a*(1.0-3.0*ca2_gbh)*y[pv->index_pt_theta_gbh[species_k]]+ceff2_gbh/(1.0+w_gbh)*k2*y[pv->index_pt_delta_gbh[species_k]]-k2*sigma_gbh+ metric_euler;
+      dy[pv->index_pt_theta_gbh[species_k]] = -a_prime_over_a*(1.0-3.0*ca2_gbh)*y[pv->index_pt_theta_gbh[species_k]]+k2*dp_over_rho_gbh/(1.0+w_gbh)-k2*sigma_gbh+ metric_euler;
 
       /** - -----> different ansatz for approximate shear derivative */
 

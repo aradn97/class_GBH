@@ -589,6 +589,8 @@ struct perturbations_workspace
   double rho_plus_p_theta;	/**< total (rho+p)*theta perturbation (gives delta Toi) */
   double rho_plus_p_shear;	/**< total (rho+p)*shear (gives delta Tij) */
   double delta_p;		    /**< total pressure perturbation (gives Tii) */
+  double delta_p_alpha_coeff; /**< synchronous gauge, DFA species: coefficient of alpha in delta_p, added in
+                                   perturbations_einstein once alpha is known */
 
   double rho_plus_p_tot;    /**< total (rho+p) (used to infer theta_tot from rho_plus_p_theta) */
 

@@ -665,6 +665,8 @@ int background_functions(
 
     rho_tot += pvecback[pba->index_bg_rho_gbh1+species_k];
     p_tot += pvecback[pba->index_bg_rho_gbh1+species_k] * pvecback[w_gbh_base+1];
+    /* p' = aH (P_2 - 5 P_1), from the background hierarchy at n=1; same form as ncdm's (pseudo_p - 5 p) */
+    dp_dloga += pvecback[pba->index_bg_rho_gbh1+species_k] * (pvecback[w_gbh_base+2] - 5.*pvecback[w_gbh_base+1]);
 
     /* (3 p) is the "relativistic" contribution to energy density */
     rho_r += 3.* pvecback[pba->index_bg_rho_gbh1+species_k] * pvecback[w_gbh_base+1];

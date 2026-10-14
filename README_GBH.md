@@ -113,7 +113,7 @@ DONE (equation-by-equation check against the two GBH papers confirms the n_max*l
 DONE (because it directly enters in the equation for sigma') 30. Why isn't this zero in the initial conditions? l3_ur = ktau_three*2./7./(12.*fracnu+45.)* ppr->curvature_ini;
 31. Maybe implement the FA at very low k, x<1?
 DONE 32. I'm using p_gbh = ppw->pvecback[pba->index_bg_P_gbh+1]; in perturbations. what if n_max is chosen to be 1?
-33. NOTE: we are using cg2_gbh = w_gbh*(1.0-1.0/(3.0+3.0*w_gbh)*(3.0*w_gbh-2.0+pseudo_p_gbh/p_gbh));
+DONE 33. NOTE: we are using cg2_gbh = w_gbh*(1.0-1.0/(3.0+3.0*w_gbh)*(3.0*w_gbh-2.0+pseudo_p_gbh/p_gbh));
         ppw->delta_p += cg2_gbh*rho_gbh*delta_gbh;  as the pressure contribution in fluid approximation (x>30).
 34. Why is class adding all of the ncdm energy density to delta_rho_m? what if it's relativistic?
     if (ppt->has_source_delta_m == _TRUE_) {
