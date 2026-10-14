@@ -7500,6 +7500,8 @@ int perturbations_total_stress_energy(
   int index_q,n_ncdm,idx;
   double epsilon,q,q2,cg2_ncdm,w_ncdm,rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm;
   double rho_gbh,p_gbh,rho_plus_p_gbh,pseudo_p_gbh,w_gbh,ca2_gbh,cg2_gbh,delta_gbh,theta_gbh,sigma_gbh; //GBH_pt
+  double ceff2_gbh,lambda_gbh,c2_asp,k_fs; //GBH_pt
+  double ceff2_ncdm,lambda_ncdm; /*ncdm_DFA_fa*/
   int species_k; //GBH_pt
   double w_fld,dw_over_da_fld,integral_fld;
   double gwncdm;
@@ -7783,7 +7785,16 @@ int perturbations_total_stress_energy(
           ppw->rho_plus_p_theta += rho_plus_p_ncdm*y[idx+1];
           ppw->rho_plus_p_shear += rho_plus_p_ncdm*y[idx+2];
           
-          ppw->delta_p += cg2_ncdm*rho_ncdm_bg*y[idx];
+          ceff2_ncdm = cg2_ncdm;
+          if (ppr->ncdm_fluid_approximation == ncdmfa_DFA) {
+            /* same scale-dependent c_eff^2 as the DFA continuity/euler eqs in perturbations_derivs,
+               so the metric is sourced by the pressure the neutrinos actually feel /ncdm_DFA_fa/ */
+            lambda_ncdm = ppw->pvecback[pba->index_bg_P_min1_ncdm1+n_ncdm] / rho_ncdm_bg;
+            c2_asp = (1. + w_ncdm) / (1. + lambda_ncdm) / 3.;
+            k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);
+            ceff2_ncdm = cg2_ncdm + (c2_asp - cg2_ncdm) * exp(-4. / 3. * k_fs / k);
+          }
+          ppw->delta_p += ceff2_ncdm*rho_ncdm_bg*y[idx];
 
           ppw->rho_plus_p_tot += rho_plus_p_ncdm;
 
@@ -7865,7 +7876,18 @@ int perturbations_total_stress_energy(
         pseudo_p_gbh = ppw->pvecback[pba->index_bg_w_gbh1+species_k*(pba->n_max_gbh+1)+2]*rho_gbh;
         sigma_gbh = y[ppw->pv->index_pt_sigma_gbh[species_k]];
         cg2_gbh = w_gbh*(1.0-1.0/(3.0+3.0*w_gbh)*(3.0*w_gbh-2.0+pseudo_p_gbh/p_gbh));
-        ppw->delta_p += cg2_gbh*rho_gbh*delta_gbh; //GBH_backreaction
+        if (ppr->gbh_fluid_approximation == gbh_fa_DFA) {
+          /* same scale-dependent c_eff^2 as the DFA continuity/euler eqs in perturbations_derivs,
+             so the metric is sourced by the pressure the neutrinos actually feel //GBH_pt */
+          lambda_gbh = ppw->pvecback[pba->index_bg_w_min1_gbh1+species_k];
+          c2_asp = (1. + w_gbh) / (1. + lambda_gbh) / 3.;
+          k_fs = pba->kfs_prefactor / sqrt(a*c2_asp);
+          ceff2_gbh = cg2_gbh + (c2_asp - cg2_gbh) * exp(-4. / 3. * k_fs / k);
+        }
+        else{
+          ceff2_gbh = cg2_gbh;
+        }
+        ppw->delta_p += ceff2_gbh*rho_gbh*delta_gbh; //GBH_backreaction
       }
       else{
         delta_gbh = 3.*y[ppw->pv->index_pt_Delta_gbh[species_k]];
