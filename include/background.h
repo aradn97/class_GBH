@@ -133,6 +133,15 @@ struct background
                                             with distinct masses always keep gbh_fa_group[n]==n (their own slot),
                                             so the FA trigger stays fully mass-dependent. */
   double T0_gbh;            /**< present temperature of gbh / T_cmb (single value shared across all gbh species) */
+  short gbh_psd_from_file;           /**< _TRUE_ if f0(q) is interpolated from gbh_psd_file instead of the analytic
+                                          Fermi-Dirac form. One p.s.d. shared by all GBH species, because the
+                                          q grids and T0_gbh are shared. */
+  char * gbh_psd_file;               /**< filename of tabulated GBH p.s.d. (two columns: q, f0), mirrors ncdm_psd_files */
+  double * gbh_psd_parameters;       /**< optional parameters for a customized analytic GBH p.s.d. (see
+                                          background_gbh_distribution), mirrors ncdm_psd_parameters */
+  double gbh_q_horizon;              /**< momentum q (in units of T_gbh) entering the approximate free-streaming
+                                          horizon, dtau_fs/dloga = 1/(aH sqrt(1+(M a/q)^2)). Negative on input
+                                          means 'auto', replaced in background_gbh_init by <q> = int q^3 f0 / int q^2 f0. */
   int gbh_fluid_approximation;            /*FA method in gbh perturbations. We need this so that if it is DFA, we should compute w_{-1} in background */
   /*GBH_bg_end*/
 

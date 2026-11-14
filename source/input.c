@@ -2878,10 +2878,57 @@ int input_read_parameters_species(struct file_content * pfc,
                     "n_max_gbh should at least be 2 because perturbation equations need w[2], for example for computing pseudo pressure. "
                     "Probably you have set ppr->gbh_FA_trigger too small. Recommended value is 15. ");
     
+    /** 7.0.2b) (optional) non-Fermi-Dirac p.s.d., mirrors use_ncdm_psd_files/ncdm_psd_filenames/ncdm_psd_parameters.
+        A single p.s.d. is shared by all GBH species (shared q grids and T0_gbh). */
+    class_call(parser_read_double(pfc,"use_gbh_psd_files",&param1,&flag1,errmsg),
+               errmsg,
+               errmsg);
+    if ((flag1 == _TRUE_) && (param1 != 0)){
+      class_test(param1 != 1, errmsg, "use_gbh_psd_files must be 0 or 1 (got %g).", param1);
+      pba->gbh_psd_from_file = _TRUE_;
+      class_call(parser_read_list_of_strings(pfc,"gbh_psd_filenames",&entries_read,&(pba->gbh_psd_file),&flag2,errmsg),
+                 errmsg,
+                 errmsg);
+      class_test(flag2 == _FALSE_, errmsg,
+                 "Entry 'use_gbh_psd_files' is found, but no corresponding 'gbh_psd_filenames' was found.");
+      class_test(entries_read != 1, errmsg,
+                 "gbh_psd_filenames must contain exactly one file (got %d): all GBH species share one p.s.d.",
+                 entries_read);
+    }
+    class_call(parser_read_list_of_doubles(pfc,"gbh_psd_parameters",&entries_read,&(pba->gbh_psd_parameters),&flag1,errmsg),
+               errmsg,
+               errmsg);
+
+    /** 7.0.2c) momentum entering the approximate free-streaming horizon: a number, or 'auto' for <q> */
+    class_call(parser_read_string(pfc,"gbh_q_horizon",&string1,&flag1,errmsg),
+               errmsg,
+               errmsg);
+    if (flag1 == _TRUE_){
+      if (strcmp(string1,"auto") == 0){
+        pba->gbh_q_horizon = -1.; // resolved in background_gbh_init
+      }
+      else{
+        class_call(parser_read_double(pfc,"gbh_q_horizon",&param1,&flag2,errmsg),
+                   errmsg,
+                   errmsg);
+        class_test(param1 <= 0., errmsg, "gbh_q_horizon must be 'auto' or a positive number (got %e).", param1);
+        pba->gbh_q_horizon = param1;
+      }
+    }
+
     /** 7.0.3) are we using a table for w_n's or are we integrating with quadrature */
     class_call(parser_read_double(pfc,"gbh_use_table",&param1,&flag1,errmsg),
               errmsg,
               errmsg);
+    /* The w_n and rho tables (and rho at x=0) are computed for Fermi-Dirac only: with any other
+       p.s.d., quadrature is mandatory. An explicit gbh_use_table=1 is an error, an unset one
+       silently falls back to quadrature. */
+    if ((pba->gbh_psd_from_file == _TRUE_) || (pba->gbh_psd_parameters != NULL)){
+      class_test((flag1 == _TRUE_) && (param1 == 1), errmsg,
+                 "gbh_use_table=1 is incompatible with a non-Fermi-Dirac GBH p.s.d. (use_gbh_psd_files or "
+                 "gbh_psd_parameters): the w_n tables are Fermi-Dirac only. Set gbh_use_table=0.");
+      pba->gbh_use_table = 0;
+    }
     /* Complete set of parameters */
     if (flag1 == _TRUE_){
       class_test(param1!=0 && param1!=1,
@@ -6111,6 +6158,10 @@ int input_default_params(struct background *pba,
   pba->dlnf0_dlnq_gbh = NULL;
   pba->gbh_horizon = NULL;
   pba->gbh_use_table = 1; // default: use table for gbh.
+  pba->gbh_psd_from_file = _FALSE_;
+  pba->gbh_psd_file = NULL;
+  pba->gbh_psd_parameters = NULL;
+  pba->gbh_q_horizon = 3.; // historical hard-coded value; 'auto' gives <q> (3.15 for Fermi-Dirac)
   pba->gbh_init_condition_integrate = 0; // default: use the exact initial conditions for perturbations in real space
   pba->n_max_gbh = 20;
   pba->n_max_gbh_table = 31;  //starts from 1

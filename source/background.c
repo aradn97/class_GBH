@@ -1120,6 +1120,8 @@ int background_free_input(
     free(pba->deg_gbh);
     free(pba->factor_gbh);
     free(pba->gbh_fa_group);
+    if (pba->gbh_psd_file != NULL) free(pba->gbh_psd_file);
+    if (pba->gbh_psd_parameters != NULL) free(pba->gbh_psd_parameters);
 
     if (pba->gbh_init_condition_integrate==_TRUE_){
       free(pba->dlnf0_dlnq_gbh); //GBH_pt
@@ -1570,16 +1572,59 @@ int background_gbh_distribution(
                                 double q,
                                 double * f0
                                 ) {
-  struct background * pba; // for future, if your gbh distribution function admits more parameters, read them from pbadist
+  struct background * pba;
   struct background_parameters_for_distributions * pbadist_local;
+  int lastidx;
+  double qlast,dqlast,f0last,df0last;
+  double *param;
   /** - extract from the input structure pbadist all the relevant information */
   pbadist_local = pbadist;          /* restore actual format of pbadist */
   pba = pbadist_local->pba;         /* extract the background structure from it */
+  param = pba->gbh_psd_parameters;  /* optional parameter list, NULL if not given */
 
-  
-  /* Fermi‐Dirac */
-  *f0 = (1.0 / pow(2 * _PI_, 3))
-        * (2.0 / (exp(q) + 1.0));
+  /** - a) interpolate in the tabulated p.s.d. (same scheme as background_ncdm_distribution) */
+  if (pba->gbh_psd_from_file == _TRUE_) {
+
+    lastidx = pbadist_local->tablesize-1;
+    if (q<pbadist_local->q[0]) {
+      //Handle q->0 case:
+      *f0 = pbadist_local->f0[0];
+    }
+    else if (q>pbadist_local->q[lastidx]) {
+      //Handle q>qmax case (ensure continuous and derivable function with Boltzmann tail):
+      qlast=pbadist_local->q[lastidx];
+      f0last=pbadist_local->f0[lastidx];
+      dqlast=qlast - pbadist_local->q[lastidx-1];
+      df0last=f0last - pbadist_local->f0[lastidx-1];
+
+      *f0 = f0last*exp(-(qlast-q)*df0last/f0last/dqlast);
+    }
+    else{
+      //Do interpolation:
+      class_call(array_interpolate_spline(
+                                          pbadist_local->q,
+                                          pbadist_local->tablesize,
+                                          pbadist_local->f0,
+                                          pbadist_local->d2f0,
+                                          1,
+                                          q,
+                                          &pbadist_local->last_index,
+                                          f0,
+                                          1,
+                                          pba->error_message),
+                 pba->error_message,     pba->error_message);
+    }
+  }
+
+  /** - b) analytic p.s.d. Default is Fermi-Dirac. To use a custom form, edit it here and read its
+        parameters from param[0], param[1], ... (gbh_psd_parameters in the .ini file). Note that
+        passing gbh_psd_parameters forces gbh_use_table=0, since the w_n tables are Fermi-Dirac only. */
+  else{
+    (void)param;
+    /* Fermi-Dirac */
+    *f0 = (1.0 / pow(2 * _PI_, 3))
+          * (2.0 / (exp(q) + 1.0));
+  }
 
   return _SUCCESS_;
 }
@@ -1860,6 +1905,9 @@ int background_gbh_init(
   char *tp;
   int row, ncols, only_ws, status, index_q, tolexp;
   double tmp1; // for the first read
+  double tmp2; // second column when sizing the p.s.d. file
+  FILE *psdfile;
+  double sum_q3,sum_q2;
   double f0m2,f0m1,f0,f0p1,f0p2,df0dq,dq,q;
   struct background_parameters_for_distributions pbadist;
   int species_k; //GBH_bg
@@ -2010,6 +2058,38 @@ int background_gbh_init(
   pbadist.d2f0       = NULL;
   pbadist.last_index = 0;
 
+  /* tabulated p.s.d. (shared by all GBH species), read and splined as in background_ncdm_init */
+  if (pba->gbh_psd_from_file == _TRUE_) {
+    psdfile = fopen(pba->gbh_psd_file,"r");
+    class_test(psdfile == NULL,pba->error_message,
+               "Could not open GBH p.s.d. file %s!",pba->gbh_psd_file);
+    // Find size of table:
+    for (row=0,status=2; status==2; row++) {
+      status = fscanf(psdfile,"%lf %lf",&tmp1,&tmp2);
+    }
+    rewind(psdfile);
+    pbadist.tablesize = row-1;
+    class_test(pbadist.tablesize < 2,pba->error_message,
+               "GBH p.s.d. file %s must contain at least two (q, f0) rows.",pba->gbh_psd_file);
+
+    class_alloc(pbadist.q,sizeof(double)*pbadist.tablesize,pba->error_message);
+    class_alloc(pbadist.f0,sizeof(double)*pbadist.tablesize,pba->error_message);
+    class_alloc(pbadist.d2f0,sizeof(double)*pbadist.tablesize,pba->error_message);
+    for (row=0; row<pbadist.tablesize; row++) {
+      status = fscanf(psdfile,"%lf %lf",&pbadist.q[row],&pbadist.f0[row]);
+    }
+    fclose(psdfile);
+    class_call(array_spline_table_lines(pbadist.q,
+                                        pbadist.tablesize,
+                                        pbadist.f0,
+                                        1,
+                                        pbadist.d2f0,
+                                        _SPLINE_EST_DERIV_,
+                                        pba->error_message),
+               pba->error_message,
+               pba->error_message);
+  }
+
   pba->q_gbh=NULL; //these will only be allocated if in perturbations.c, we're integrating in q space using quadrature to set the initial conditions
   pba->weights_gbh=NULL;
   pba->dlnf0_dlnq_gbh=NULL;
@@ -2109,6 +2189,35 @@ int background_gbh_init(
     }
   }
 
+
+  /* gbh_q_horizon='auto': replace the negative sentinel by <q> = int q^3 f0 dq / int q^2 f0 dq.
+     The quadrature weights already contain f0 (see background_gbh_momenta). The table path is
+     Fermi-Dirac only, for which <q> = 7 pi^4 / (180 zeta(3)) = 3.1514. */
+  if (pba->gbh_q_horizon < 0.) {
+    if (pba->gbh_use_table == _TRUE_) {
+      pba->gbh_q_horizon = 7.*pow(_PI_,4)/(180.*_zeta3_);
+    }
+    else {
+      sum_q3 = 0.;
+      sum_q2 = 0.;
+      for (index_q=0; index_q<pba->q_size_gbh_bg; index_q++) {
+        q = pba->q_gbh_bg[index_q];
+        sum_q3 += q*q*q*pba->weights_gbh_bg[index_q];
+        sum_q2 += q*q*pba->weights_gbh_bg[index_q];
+      }
+      pba->gbh_q_horizon = sum_q3/sum_q2;
+    }
+    if (pba->background_verbose > 0) {
+      printf("GBH free-streaming horizon uses q = <q> = %g (gbh_q_horizon=auto)\n", pba->gbh_q_horizon);
+    }
+  }
+
+  /* the p.s.d. spline is only needed while building the q grids and dlnf0/dlnq above */
+  if (pba->gbh_psd_from_file == _TRUE_) {
+    free(pbadist.q);
+    free(pbadist.f0);
+    free(pbadist.d2f0);
+  }
 
   /* deg_gbh[k] applied here, per species, so the quadrature path (which consumes factor_gbh) is
      normalized consistently with the table-interpolation path (which applies deg_gbh[k] directly
@@ -3492,7 +3601,7 @@ int background_derivs(
   /*GBH_pt_start*/
   if (pba->has_gbh == _TRUE_){
     for (species_k=0; species_k<pba->N_gbh; species_k++){
-      dy[pba->index_bi_app_horizon_gbh1+species_k] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh[species_k] * a / 3., 2.)));
+      dy[pba->index_bi_app_horizon_gbh1+species_k] = 1. / (a * H * sqrt(1. + pow(pba->M_gbh[species_k] * a / pba->gbh_q_horizon, 2.)));
     }
   }
   /*GBH_pt_end*/
