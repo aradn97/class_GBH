@@ -2280,7 +2280,7 @@ int background_gbh_momenta(
                             ) {
 
   int nn, index_q;
-  double epsilon,epsilon2;
+  double epsilon, x, xn, prefac;
   double q2;
   double factor2;
   /** Summary: */
@@ -2313,9 +2313,13 @@ int background_gbh_momenta(
     if (p!=NULL) *p += q2*q2/3./epsilon*wvec[index_q];
     if (P_min1!=NULL) *P_min1 += pow(epsilon,3.)/3.*wvec[index_q];
     if (P_n != NULL) {
-      epsilon2 = epsilon*epsilon;
+      /* (q^2/epsilon^2)^nn by a running product: one multiplication per moment instead of a pow call */
+      x = q2/(epsilon*epsilon);
+      xn = x;
+      prefac = q2*epsilon/3.*wvec[index_q];
       for (nn = 2; nn <= n_max_gbh; nn++) {
-        P_n[nn-2] += q2*epsilon/3.*pow(q2/epsilon2, (double)nn) * wvec[index_q];
+        xn *= x;
+        P_n[nn-2] += prefac*xn;
       }
     }
   }

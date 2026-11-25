@@ -6453,6 +6453,7 @@ int perturbations_initial_conditions(struct precision * ppr,
           }
           else{ //start from initial conditions on psi_l's and integrate over q to get the init conditions for delta_n and f_n,ell
             double * Psi_gbh;
+            double * qfac_gbh;
             a2=a*a;
             factor = pba->factor_gbh[species_k]/pow(a,4);
             /*  Psi_gbh will contain the initial conditions for the gbh perturbations in momentum space, 
@@ -6475,16 +6476,26 @@ int perturbations_initial_conditions(struct precision * ppr,
               idx+=4;
             }
 
+            /* per-node factors: [0] q^2 epsilon w_q, [1] (q/epsilon)^(2n) by a running product
+               (one multiplication per moment instead of a pow call), [2..5] (q/epsilon)^l, l=0..3 */
+            class_alloc(qfac_gbh, 6 * pba->q_size_gbh * sizeof(double), ppt->error_message);
+            for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
+              q = pba->q_gbh[index_q];
+              q2 = q*q;
+              epsilon = sqrt(q2+pba->M_gbh[species_k]*pba->M_gbh[species_k]*a2);
+              qfac_gbh[6*index_q] = q2*epsilon*pba->weights_gbh[index_q];
+              qfac_gbh[6*index_q+1] = 1.;
+              qfac_gbh[6*index_q+2] = 1.;
+              for (ll=1;ll<4;ll++)
+                qfac_gbh[6*index_q+2+ll] = qfac_gbh[6*index_q+1+ll]*q/epsilon;
+            }
+
             for(n=0;n<ppw->pv->n_max_gbh[species_k];n++) //momentum integrals for gbh perturbations is only used once in the code, and it's here in this loop
             {
               rho_delta_gbh = 0.0;
               idx = 0;
               for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
-                q = pba->q_gbh[index_q];
-                q2 = q*q;
-                epsilon = sqrt(q2+pba->M_gbh[species_k]*pba->M_gbh[species_k]*a2);
-
-                rho_delta_gbh += q2*epsilon*pow(q/epsilon,2*n)*pba->weights_gbh[index_q]*Psi_gbh[idx];
+                rho_delta_gbh += qfac_gbh[6*index_q]*qfac_gbh[6*index_q+1]*Psi_gbh[idx];
                 //Jump to next momentum bin:
                 idx+=4;
               }
@@ -6500,19 +6511,20 @@ int perturbations_initial_conditions(struct precision * ppr,
                 rho_plus_p_shear_gbh = 0.0;
                 idx = 0;
                 for (index_q=0; index_q < pba->q_size_gbh; index_q ++) {
-                  q = pba->q_gbh[index_q];
-                  q2 = q*q;
-                  epsilon = sqrt(q2+pba->M_gbh[species_k]*pba->M_gbh[species_k]*a2);
-
-                  rho_plus_p_shear_gbh += q2*epsilon*pow(q/epsilon,2*n+ll)*pba->weights_gbh[index_q]*Psi_gbh[idx+ll];
+                  rho_plus_p_shear_gbh += qfac_gbh[6*index_q]*qfac_gbh[6*index_q+1]*qfac_gbh[6*index_q+2+ll]*Psi_gbh[idx+ll];
                   //Jump to next momentum bin:
                   idx+=4;
                 }
                 rho_plus_p_shear_gbh *= l_factorial/ll_1_double_factorial*factor;
                 ppw->pv->y[ppw->pv->index_pt_Sigma_gbh[species_k]+n*ppw->pv->l_max_gbh[species_k]+ll-1] = rho_plus_p_shear_gbh/(ppw->pvecback[pba->index_bg_rho_gbh1+species_k]*(1.+ppw->pvecback[pba->index_bg_w_gbh1+species_k*(pba->n_max_gbh+1)+1]));
                 }
+
+              /* (q/epsilon)^(2n) -> (q/epsilon)^(2n+2) */
+              for (index_q=0; index_q < pba->q_size_gbh; index_q ++)
+                qfac_gbh[6*index_q+1] *= qfac_gbh[6*index_q+4];
               }
 
+            free(qfac_gbh);
             free(Psi_gbh);
           }
         }
